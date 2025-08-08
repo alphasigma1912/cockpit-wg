@@ -29,6 +29,22 @@ class Backend {
   installPackages(): Promise<any> {
     return this.call('InstallPackages');
   }
+
+  addPeer(name: string, peer: any): Promise<any> {
+    return this.call('AddPeer', { name, peer });
+  }
+
+  listPeers(name: string): Promise<any> {
+    return this.call('ListPeers', { name });
+  }
+
+  removePeer(name: string, publicKey: string): Promise<any> {
+    return this.call('RemovePeer', { name, publicKey });
+  }
+
+  updatePeer(name: string, publicKey: string, peer: any): Promise<any> {
+    return this.call('UpdatePeer', { name, publicKey, peer });
+  }
 }
 
 export default new Backend();
