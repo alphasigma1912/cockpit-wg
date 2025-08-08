@@ -3,12 +3,14 @@ import { Page, PageSection, Title, Button, Spinner, Alert } from '@patternfly/re
 import backend from './backend';
 import Peers from './Peers';
 import InterfaceControls from './InterfaceControls';
+import Diagnostics from './Diagnostics';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [page, setPage] = useState<'main' | 'diagnostics'>('main');
 
   useEffect(() => {
     backend
@@ -67,8 +69,16 @@ const App: React.FC = () => {
     <Page>
       <PageSection>
         <Title headingLevel="h1">Cockpit WireGuard</Title>
-        <InterfaceControls />
-        <Peers />
+        <Button variant="link" onClick={() => setPage('main')}>Interfaces</Button>
+        <Button variant="link" onClick={() => setPage('diagnostics')}>Diagnostics</Button>
+        {page === 'main' ? (
+          <>
+            <InterfaceControls />
+            <Peers />
+          </>
+        ) : (
+          <Diagnostics />
+        )}
       </PageSection>
     </Page>
   );
