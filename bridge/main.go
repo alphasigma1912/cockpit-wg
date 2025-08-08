@@ -99,6 +99,38 @@ func handleRequest(req *request) *response {
 		result, err = checkPrereqs()
 	case "InstallPackages":
 		result, err = installPackages()
+	case "AddPeer":
+		var p struct {
+			Name string     `json:"name"`
+			Peer peerParams `json:"peer"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = addPeer(p.Name, p.Peer)
+		}
+	case "RemovePeer":
+		var p struct {
+			Name      string `json:"name"`
+			PublicKey string `json:"publicKey"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = removePeer(p.Name, p.PublicKey)
+		}
+	case "UpdatePeer":
+		var p struct {
+			Name      string     `json:"name"`
+			PublicKey string     `json:"publicKey"`
+			Peer      peerParams `json:"peer"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = updatePeer(p.Name, p.PublicKey, p.Peer)
+		}
+	case "ListPeers":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = listPeers(p.Name)
+		}
 	default:
 		err = errors.New("unknown method")
 	}
