@@ -70,13 +70,10 @@ func handleRequest(client *wgctrl.Client, req *request) *response {
 		if err = json.Unmarshal(req.Params, &p); err == nil {
 			result, err = restartInterface(p.Name)
 		}
-	case "InstallPackage":
-		var p struct {
-			Name string `json:"name"`
-		}
-		if err = json.Unmarshal(req.Params, &p); err == nil {
-			result, err = installPackage(p.Name)
-		}
+	case "CheckPrereqs":
+		result, err = checkPrereqs()
+	case "InstallPackages":
+		result, err = installPackages()
 	default:
 		err = errors.New("unknown method")
 	}
@@ -120,30 +117,57 @@ type pkgManager struct {
 }
 
 func detectPackageManager() (pkgManager, error) {
-	if _, err := exec.LookPath("apt-get"); err == nil {
-		return pkgManager{"apt-get", []string{"install", "-y"}}, nil
+	data, err := os.ReadFile("/etc/os-release")
+	if err != nil {
+		return pkgManager{}, err
 	}
-	if _, err := exec.LookPath("dnf"); err == nil {
-		return pkgManager{"dnf", []string{"install", "-y"}}, nil
+	info := make(map[string]string)
+	lines := strings.Split(string(data), "\n")
+	for _, l := range lines {
+		parts := strings.SplitN(l, "=", 2)
+		if len(parts) == 2 {
+			key := parts[0]
+			val := strings.Trim(parts[1], "\"")
+			info[key] = val
+		}
 	}
-	if _, err := exec.LookPath("pacman"); err == nil {
-		return pkgManager{"pacman", []string{"-S", "--noconfirm"}}, nil
+	ids := []string{info["ID"], info["ID_LIKE"]}
+	for _, id := range ids {
+		if strings.Contains(id, "debian") || strings.Contains(id, "ubuntu") {
+			return pkgManager{"apt-get", []string{"install", "-y"}}, nil
+		}
+		if strings.Contains(id, "fedora") || strings.Contains(id, "centos") || strings.Contains(id, "rhel") {
+			return pkgManager{"dnf", []string{"install", "-y"}}, nil
+		}
+		if strings.Contains(id, "arch") {
+			return pkgManager{"pacman", []string{"-S", "--noconfirm"}}, nil
+		}
 	}
-	return pkgManager{}, errors.New("no supported package manager found")
+	return pkgManager{}, errors.New("unsupported OS")
 }
 
-func installPackage(name string) (interface{}, error) {
-	if name == "" {
-		return nil, fmt.Errorf("empty package name")
-	}
+func checkPrereqs() (interface{}, error) {
+	kernel := exec.Command("modprobe", "-n", "wireguard").Run() == nil
+	_, err := exec.LookPath("wg")
+	tools := err == nil
+	systemd := exec.Command("systemctl", "list-unit-files", "wg-quick@.service").Run() == nil
+	return map[string]bool{"kernel": kernel, "tools": tools, "systemd": systemd}, nil
+}
+
+func installPackages() (interface{}, error) {
 	pm, err := detectPackageManager()
 	if err != nil {
 		return nil, err
 	}
-	args := append(pm.installArgs, name)
+	pkgs := []string{"wireguard", "wireguard-tools"}
+	args := append(pm.installArgs, pkgs...)
 	cmd := exec.Command(pm.cmd, args...)
 	if err := cmd.Run(); err != nil {
 		return nil, err
+	}
+	exec.Command("systemctl", "daemon-reload").Run()
+	if _, err := exec.LookPath("wg"); err != nil {
+		return nil, fmt.Errorf("wg binary not found after installation")
 	}
 	return map[string]string{"status": "ok"}, nil
 }
