@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "wg-bridge Backend API",
+  "type": "object",
+  "definitions": {
+    "Request": {
+      "type": "object",
+      "required": ["jsonrpc", "id", "method", "params"],
+      "properties": {
+        "jsonrpc": { "type": "string", "const": "2.0" },
+        "id": { "type": ["string", "number", "null"] },
+        "method": {
+          "type": "string",
+          "enum": ["ListInterfaces", "RestartInterface", "InstallPackage"]
+        },
+        "params": { "type": "object" }
+      }
+    },
+    "ListInterfacesResult": {
+      "type": "object",
+      "required": ["interfaces"],
+      "properties": {
+        "interfaces": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "required": ["jsonrpc", "id"],
+      "properties": {
+        "jsonrpc": { "type": "string", "const": "2.0" },
+        "id": { "type": ["string", "number", "null"] },
+        "result": {},
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "integer" },
+            "message": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
