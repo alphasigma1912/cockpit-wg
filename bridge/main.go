@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -134,6 +135,8 @@ func handleRequest(req *request) *response {
 		result, err = checkPrereqs()
 	case "InstallPackages":
 		result, err = installPackages()
+	case "RunSelfTest":
+		result, err = runSelfTest()
 	case "AddPeer":
 		var p struct {
 			Name string     `json:"name"`
@@ -508,6 +511,150 @@ func installPackages() (interface{}, error) {
 		return nil, fmt.Errorf("wg binary not found after installation")
 	}
 	return map[string]string{"status": "ok"}, nil
+}
+
+func runSelfTest() (interface{}, error) {
+	details := make(map[string]interface{})
+	lines := []string{}
+
+	kernel := exec.Command("modprobe", "-n", "wireguard").Run() == nil
+	details["kernel"] = kernel
+	lines = append(lines, fmt.Sprintf("Kernel module present: %v", kernel))
+
+	_, err := exec.LookPath("wg")
+	tools := err == nil
+	details["tools"] = tools
+	lines = append(lines, fmt.Sprintf("wg binary available: %v", tools))
+
+	systemd := exec.Command("systemctl", "list-unit-files", "wg-quick@.service").Run() == nil
+	details["systemd"] = systemd
+	lines = append(lines, fmt.Sprintf("systemd units present: %v", systemd))
+
+	ipv4, ipv6 := checkIPForwarding()
+	details["ipForwarding"] = map[string]bool{"ipv4": ipv4, "ipv6": ipv6}
+	lines = append(lines, fmt.Sprintf("IP forwarding (IPv4/IPv6): %v/%v", ipv4, ipv6))
+
+	fw := checkFirewall()
+	details["firewall"] = fw
+	lines = append(lines, fmt.Sprintf("Firewall: %s", fw))
+
+	conflicts, err := findRouteConflicts()
+	if err != nil {
+		details["routeConflictsError"] = err.Error()
+		lines = append(lines, "Route conflicts: error checking")
+	} else {
+		details["routeConflicts"] = conflicts
+		if len(conflicts) == 0 {
+			lines = append(lines, "Route conflicts: none")
+		} else {
+			lines = append(lines, "Route conflicts detected: "+strings.Join(conflicts, ", "))
+		}
+	}
+
+	clock := checkClockSync()
+	details["clock"] = clock
+	lines = append(lines, fmt.Sprintf("Clock sync: %s", clock))
+
+	dummy := `[Interface]
+Address = 10.0.0.1/32
+PrivateKey = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+[Peer]
+PublicKey = AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+AllowedIPs = 10.0.0.2/32
+`
+	if _, err := validateConfig(dummy); err != nil {
+		details["validateConfig"] = err.Error()
+		lines = append(lines, "Config validation: "+err.Error())
+	} else {
+		details["validateConfig"] = "ok"
+		lines = append(lines, "Config validation: ok")
+	}
+
+	cmd := exec.Command("wg", "syncconf", "wgselftest0", "-")
+	cmd.Stdin = strings.NewReader(dummy)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		details["syncconf"] = sanitizeOutput(string(out))
+		lines = append(lines, "Syncconf: "+strings.TrimSpace(sanitizeOutput(string(out))))
+	} else {
+		details["syncconf"] = "ok"
+		lines = append(lines, "Syncconf: ok")
+	}
+
+	return map[string]interface{}{"report": strings.Join(lines, "\n"), "details": details}, nil
+}
+
+func checkIPForwarding() (bool, bool) {
+	ipv4 := readSysctl("/proc/sys/net/ipv4/ip_forward") == "1"
+	ipv6 := readSysctl("/proc/sys/net/ipv6/conf/all/forwarding") == "1"
+	return ipv4, ipv6
+}
+
+func readSysctl(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "0"
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func checkFirewall() string {
+	if _, err := exec.LookPath("nft"); err == nil {
+		if out, err := exec.Command("nft", "list", "ruleset").Output(); err == nil {
+			if bytes.Contains(out, []byte("dport 51820")) && (bytes.Contains(out, []byte("drop")) || bytes.Contains(out, []byte("reject"))) {
+				return "blocked"
+			}
+		}
+	}
+	if _, err := exec.LookPath("iptables"); err == nil {
+		if out, err := exec.Command("iptables", "-S").Output(); err == nil {
+			if bytes.Contains(out, []byte("--dport 51820")) && (bytes.Contains(out, []byte("DROP")) || bytes.Contains(out, []byte("REJECT"))) {
+				return "blocked"
+			}
+		}
+	}
+	return "ok"
+}
+
+func findRouteConflicts() ([]string, error) {
+	out, err := exec.Command("wg", "show", "all", "allowed-ips").Output()
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]string)
+	conflicts := []string{}
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+		iface := strings.TrimSuffix(parts[0], ":")
+		for _, ip := range strings.Split(parts[1], ",") {
+			ip = strings.TrimSpace(ip)
+			if other, ok := seen[ip]; ok && other != iface {
+				conflicts = append(conflicts, ip)
+			} else {
+				seen[ip] = iface
+			}
+		}
+	}
+	return conflicts, nil
+}
+
+func checkClockSync() string {
+	if out, err := exec.Command("timedatectl", "show", "--property=NTPSynchronized", "--value").Output(); err == nil {
+		if strings.TrimSpace(string(out)) == "yes" {
+			return "synchronized"
+		}
+		return "unsynchronized"
+	}
+	return "unknown"
 }
 
 func auditLog(method string, params json.RawMessage, err error) {

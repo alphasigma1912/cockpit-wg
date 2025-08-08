@@ -30,6 +30,10 @@ class Backend {
     return this.call('InstallPackages');
   }
 
+  runSelfTest(): Promise<any> {
+    return this.call('RunSelfTest');
+  }
+
   listInterfaces(): Promise<any> {
     return this.call('ListInterfaces');
   }
