@@ -1,0 +1,6 @@
+{
+  "name": "cockpit-wg",
+  "version": "0.0.1",
+  "apiVersion": 1,
+  "main": "index.html"
+}
