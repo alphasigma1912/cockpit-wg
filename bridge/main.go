@@ -16,6 +16,12 @@ import (
 	"github.com/coreos/go-systemd/v22/journal"
 )
 
+var sensitiveRx = regexp.MustCompile(`(?i)(PrivateKey|PresharedKey)\s*=\s*[^\s]+`)
+
+func sanitizeOutput(s string) string {
+	return sensitiveRx.ReplaceAllString(s, "$1=[REDACTED]")
+}
+
 type request struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id"`
@@ -87,6 +93,27 @@ func handleRequest(req *request) *response {
 		}
 		if err = json.Unmarshal(req.Params, &p); err == nil {
 			result, err = reloadInterface(p.Name)
+		}
+	case "UpInterface":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = upInterface(p.Name)
+		}
+	case "DownInterface":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = downInterface(p.Name)
+		}
+	case "GetInterfaceStatus":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = getInterfaceStatus(p.Name)
 		}
 	case "RestartInterface":
 		var p struct {
@@ -169,7 +196,7 @@ func listInterfaces() (interface{}, error) {
 	return map[string]interface{}{"interfaces": names}, nil
 }
 
-var ifaceRx = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+var ifaceRx = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,15}$`)
 
 type configSummary struct {
 	Interface map[string]string   `json:"interface"`
@@ -354,10 +381,64 @@ func restartInterface(name string) (interface{}, error) {
 		return nil, fmt.Errorf("invalid interface name")
 	}
 	cmd := exec.Command("systemctl", "restart", fmt.Sprintf("wg-quick@%s", name))
-	if err := cmd.Run(); err != nil {
-		return nil, err
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%s", sanitizeOutput(string(out)))
 	}
 	return map[string]string{"status": "ok"}, nil
+}
+
+func upInterface(name string) (interface{}, error) {
+	if !ifaceRx.MatchString(name) {
+		return nil, fmt.Errorf("invalid interface name")
+	}
+	cmd := exec.Command("systemctl", "start", fmt.Sprintf("wg-quick@%s", name))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%s", sanitizeOutput(string(out)))
+	}
+	return map[string]string{"status": "ok"}, nil
+}
+
+func downInterface(name string) (interface{}, error) {
+	if !ifaceRx.MatchString(name) {
+		return nil, fmt.Errorf("invalid interface name")
+	}
+	cmd := exec.Command("systemctl", "stop", fmt.Sprintf("wg-quick@%s", name))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%s", sanitizeOutput(string(out)))
+	}
+	return map[string]string{"status": "ok"}, nil
+}
+
+func getInterfaceStatus(name string) (interface{}, error) {
+	if !ifaceRx.MatchString(name) {
+		return nil, fmt.Errorf("invalid interface name")
+	}
+	unit := fmt.Sprintf("wg-quick@%s", name)
+	out, err := exec.Command("systemctl", "show", unit, "--no-page", "--property=ActiveState,SubState,ActiveEnterTimestamp,InactiveEnterTimestamp").Output()
+	if err != nil {
+		return nil, err
+	}
+	info := make(map[string]string)
+	for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		parts := strings.SplitN(l, "=", 2)
+		if len(parts) == 2 {
+			info[parts[0]] = parts[1]
+		}
+	}
+	status := info["ActiveState"]
+	if sub, ok := info["SubState"]; ok && sub != "" {
+		status = fmt.Sprintf("%s (%s)", status, sub)
+	}
+	ts := info["InactiveEnterTimestamp"]
+	if info["ActiveState"] == "active" {
+		ts = info["ActiveEnterTimestamp"]
+	}
+	jOut, _ := exec.Command("journalctl", "-u", unit, "-n", "20", "--no-pager", "--output=cat").Output()
+	msg := sanitizeOutput(string(jOut))
+	return map[string]string{"status": status, "last_change": ts, "message": msg}, nil
 }
 
 type pkgManager struct {

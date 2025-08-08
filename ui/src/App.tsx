@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Page, PageSection, Title, Button, Spinner, Alert } from '@patternfly/react-core';
 import backend from './backend';
 import Peers from './Peers';
+import InterfaceControls from './InterfaceControls';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -66,6 +67,7 @@ const App: React.FC = () => {
     <Page>
       <PageSection>
         <Title headingLevel="h1">Cockpit WireGuard</Title>
+        <InterfaceControls />
         <Peers />
       </PageSection>
     </Page>

@@ -30,6 +30,26 @@ class Backend {
     return this.call('InstallPackages');
   }
 
+  listInterfaces(): Promise<any> {
+    return this.call('ListInterfaces');
+  }
+
+  getInterfaceStatus(name: string): Promise<any> {
+    return this.call('GetInterfaceStatus', { name });
+  }
+
+  upInterface(name: string): Promise<any> {
+    return this.call('UpInterface', { name });
+  }
+
+  downInterface(name: string): Promise<any> {
+    return this.call('DownInterface', { name });
+  }
+
+  restartInterface(name: string): Promise<any> {
+    return this.call('RestartInterface', { name });
+  }
+
   addPeer(name: string, peer: any): Promise<any> {
     return this.call('AddPeer', { name, peer });
   }
