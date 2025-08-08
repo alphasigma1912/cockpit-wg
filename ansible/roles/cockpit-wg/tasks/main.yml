@@ -1,0 +1,7 @@
+---
+# Placeholder tasks for deploying cockpit-wg
+- name: Ensure wg-bridge binary is installed
+  copy:
+    src: wg-bridge
+    dest: /usr/local/bin/wg-bridge
+    mode: '0755'
