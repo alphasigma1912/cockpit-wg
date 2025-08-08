@@ -1,6 +1,12 @@
 {
-  "name": "cockpit-wg",
-  "version": "0.0.1",
-  "apiVersion": 1,
-  "main": "index.html"
+  "version": 1,
+  "content-security-policy": "default-src 'self';img-src 'self' data:;font-src 'self';object-src 'none';",
+  "tools": {
+    "wireguard": {
+      "label": "WireGuard",
+      "path": "index.html",
+      "keywords": ["wireguard", "vpn", "wg"]
+    }
+  }
 }
+
