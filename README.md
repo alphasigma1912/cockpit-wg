@@ -21,3 +21,7 @@ The project is considered successful when all of the following measurable condit
 5. **Full test coverage for critical paths** – Parsing, apply, and configuration exchange code paths have 100% test coverage.
 6. **Distribution packages** – Packages are produced for Debian/Ubuntu and RHEL/Fedora.
 
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the threat model and security baseline.
