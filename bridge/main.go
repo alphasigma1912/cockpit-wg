@@ -42,6 +42,7 @@ type respError struct {
 }
 
 func main() {
+	initMetricsCollector()
 	scanner := bufio.NewScanner(os.Stdin)
 	writer := bufio.NewWriter(os.Stdout)
 
@@ -121,6 +122,13 @@ func handleRequest(req *request) *response {
 		}
 		if err = json.Unmarshal(req.Params, &p); err == nil {
 			result, err = restartInterface(p.Name)
+		}
+	case "GetMetrics":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = getMetrics(p.Name)
 		}
 	case "CheckPrereqs":
 		result, err = checkPrereqs()

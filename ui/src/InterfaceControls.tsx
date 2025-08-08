@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Alert, FormGroup } from '@patternfly/react-core';
 import backend from './backend';
+import MetricsGraph from './MetricsGraph';
 
 const InterfaceControls: React.FC = () => {
   const [interfaces, setInterfaces] = useState<string[]>([]);
@@ -9,6 +10,11 @@ const InterfaceControls: React.FC = () => {
   const [lastChange, setLastChange] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [metrics, setMetrics] = useState<{ timestamps: number[]; rx: number[]; tx: number[] }>({
+    timestamps: [],
+    rx: [],
+    tx: [],
+  });
 
   useEffect(() => {
     backend
@@ -37,6 +43,22 @@ const InterfaceControls: React.FC = () => {
 
   useEffect(() => {
     refreshStatus();
+    let cancelled = false;
+    const fetchMetrics = () => {
+      if (!selected) return;
+      backend
+        .getMetrics(selected)
+        .then((res) => {
+          if (!cancelled) setMetrics(res);
+        })
+        .catch((e) => setError(String(e)));
+    };
+    fetchMetrics();
+    const id = setInterval(fetchMetrics, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [selected]);
 
   const scheduleRefresh = () => {
@@ -69,6 +91,7 @@ const InterfaceControls: React.FC = () => {
       <p>Status: {status}</p>
       <p>Last change: {lastChange}</p>
       {message && <pre>{message}</pre>}
+      <MetricsGraph times={metrics.timestamps} rx={metrics.rx} tx={metrics.tx} />
       <Button variant="primary" onClick={doAction('up')} isDisabled={!selected}>
         Up
       </Button>{' '}

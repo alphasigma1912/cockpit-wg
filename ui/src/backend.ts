@@ -50,6 +50,10 @@ class Backend {
     return this.call('RestartInterface', { name });
   }
 
+  getMetrics(name: string): Promise<any> {
+    return this.call('GetMetrics', { name });
+  }
+
   addPeer(name: string, peer: any): Promise<any> {
     return this.call('AddPeer', { name, peer });
   }
