@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/coreos/go-systemd/v22/journal"
-	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 type request struct {
@@ -34,12 +36,6 @@ type respError struct {
 }
 
 func main() {
-	client, err := wgctrl.New()
-	if err != nil {
-		panic(err)
-	}
-	defer client.Close()
-
 	scanner := bufio.NewScanner(os.Stdin)
 	writer := bufio.NewWriter(os.Stdout)
 
@@ -49,7 +45,7 @@ func main() {
 		if err := json.Unmarshal(line, &req); err != nil {
 			continue
 		}
-		res := handleRequest(client, &req)
+		res := handleRequest(&req)
 		b, _ := json.Marshal(res)
 		writer.Write(b)
 		writer.WriteByte('\n')
@@ -57,12 +53,41 @@ func main() {
 	}
 }
 
-func handleRequest(client *wgctrl.Client, req *request) *response {
+func handleRequest(req *request) *response {
 	var result interface{}
 	var err error
 	switch req.Method {
 	case "ListInterfaces":
-		result, err = listInterfaces(client)
+		result, err = listInterfaces()
+	case "ReadConfig":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = readConfig(p.Name)
+		}
+	case "ValidateConfig":
+		var p struct {
+			Text string `json:"text"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = validateConfig(p.Text)
+		}
+	case "WriteConfig":
+		var p struct {
+			Name string `json:"name"`
+			Text string `json:"text"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = writeConfig(p.Name, p.Text)
+		}
+	case "ReloadInterface":
+		var p struct {
+			Name string `json:"name"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = reloadInterface(p.Name)
+		}
 	case "RestartInterface":
 		var p struct {
 			Name string `json:"name"`
@@ -86,19 +111,211 @@ func handleRequest(client *wgctrl.Client, req *request) *response {
 	return &response{JSONRPC: "2.0", ID: req.ID, Result: result}
 }
 
-func listInterfaces(client *wgctrl.Client) (interface{}, error) {
-	devices, err := client.Devices()
+func listInterfaces() (interface{}, error) {
+	dir := "/etc/wireguard"
+	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return map[string]interface{}{"interfaces": []string{}}, nil
+		}
 		return nil, err
 	}
-	names := make([]string, 0, len(devices))
-	for _, d := range devices {
-		names = append(names, d.Name)
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasSuffix(name, ".conf") {
+			base := strings.TrimSuffix(name, ".conf")
+			if ifaceRx.MatchString(base) {
+				names = append(names, base)
+			}
+		}
 	}
+	sort.Strings(names)
 	return map[string]interface{}{"interfaces": names}, nil
 }
 
 var ifaceRx = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+
+type configSummary struct {
+	Interface map[string]string   `json:"interface"`
+	Peers     []map[string]string `json:"peers"`
+}
+
+func readConfig(name string) (interface{}, error) {
+	if !ifaceRx.MatchString(name) {
+		return nil, fmt.Errorf("invalid interface name")
+	}
+	path := filepath.Join("/etc/wireguard", name+".conf")
+	if !strings.HasPrefix(filepath.Clean(path), "/etc/wireguard/") {
+		return nil, fmt.Errorf("invalid path")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	summary, err := parseConfig(string(data))
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{"raw": string(data), "summary": summary}, nil
+}
+
+func validateConfig(text string) (interface{}, error) {
+	summary, err := parseConfig(text)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{"summary": summary}, nil
+}
+
+func writeConfig(name, text string) (interface{}, error) {
+	if !ifaceRx.MatchString(name) {
+		return nil, fmt.Errorf("invalid interface name")
+	}
+	if _, err := validateConfig(text); err != nil {
+		return nil, err
+	}
+	dir := "/etc/wireguard"
+	tmp, err := os.CreateTemp(dir, name+".tmp")
+	if err != nil {
+		return nil, err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(0600); err != nil {
+		tmp.Close()
+		return nil, err
+	}
+	if _, err := tmp.WriteString(text); err != nil {
+		tmp.Close()
+		return nil, err
+	}
+	tmp.Close()
+
+	if _, err := validateConfig(text); err != nil {
+		return nil, err
+	}
+
+	cfgPath := filepath.Join(dir, name+".conf")
+	if !strings.HasPrefix(filepath.Clean(cfgPath), "/etc/wireguard/") {
+		return nil, fmt.Errorf("invalid path")
+	}
+	backupPath := cfgPath + ".bak"
+	if err := os.Rename(cfgPath, backupPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+	}
+	if err := os.Rename(tmpName, cfgPath); err != nil {
+		os.Rename(backupPath, cfgPath)
+		return nil, err
+	}
+	if _, err := reloadInterface(name); err != nil {
+		os.Rename(cfgPath, tmpName)
+		os.Rename(backupPath, cfgPath)
+		reloadInterface(name)
+		return nil, err
+	}
+	os.Remove(backupPath)
+	return map[string]string{"status": "ok"}, nil
+}
+
+func reloadInterface(name string) (interface{}, error) {
+	if !ifaceRx.MatchString(name) {
+		return nil, fmt.Errorf("invalid interface name")
+	}
+	path := filepath.Join("/etc/wireguard", name+".conf")
+	if !strings.HasPrefix(filepath.Clean(path), "/etc/wireguard/") {
+		return nil, fmt.Errorf("invalid path")
+	}
+	if err := exec.Command("wg", "syncconf", name, path).Run(); err != nil {
+		if err2 := exec.Command("systemctl", "reload", fmt.Sprintf("wg-quick@%s", name)).Run(); err2 != nil {
+			return nil, err2
+		}
+	}
+	return map[string]string{"status": "ok"}, nil
+}
+
+func parseConfig(text string) (*configSummary, error) {
+	summary := &configSummary{Interface: make(map[string]string)}
+	var curr map[string]string
+	scanner := bufio.NewScanner(strings.NewReader(text))
+	line := 0
+	for scanner.Scan() {
+		line++
+		l := strings.TrimSpace(scanner.Text())
+		if l == "" || strings.HasPrefix(l, "#") || strings.HasPrefix(l, ";") {
+			continue
+		}
+		if strings.HasPrefix(l, "[") && strings.HasSuffix(l, "]") {
+			sect := strings.TrimSpace(l[1 : len(l)-1])
+			switch sect {
+			case "Interface":
+				curr = summary.Interface
+			case "Peer":
+				m := make(map[string]string)
+				summary.Peers = append(summary.Peers, m)
+				curr = m
+			default:
+				return nil, fmt.Errorf("unknown section %q at line %d", sect, line)
+			}
+			continue
+		}
+		if curr == nil {
+			return nil, fmt.Errorf("key-value outside of section at line %d", line)
+		}
+		parts := strings.SplitN(l, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid line %d", line)
+		}
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+		curr[key] = val
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	if len(summary.Interface) == 0 {
+		return nil, fmt.Errorf("missing [Interface] section")
+	}
+	if len(summary.Peers) == 0 {
+		return nil, fmt.Errorf("no peers defined")
+	}
+	seen := make(map[string]struct{})
+	for _, p := range summary.Peers {
+		pk, ok := p["PublicKey"]
+		if !ok || pk == "" {
+			return nil, fmt.Errorf("peer missing PublicKey")
+		}
+		if _, dup := seen[pk]; dup {
+			return nil, fmt.Errorf("duplicate peer %s", pk)
+		}
+		seen[pk] = struct{}{}
+		allowed, ok := p["AllowedIPs"]
+		if !ok {
+			return nil, fmt.Errorf("peer %s missing AllowedIPs", pk)
+		}
+		ips := strings.Split(allowed, ",")
+		for _, ip := range ips {
+			ip = strings.TrimSpace(ip)
+			if ip == "" {
+				continue
+			}
+			if ip == "0.0.0.0/0" || ip == "::/0" {
+				return nil, fmt.Errorf("disallowed AllowedIPs %s", ip)
+			}
+			if _, _, err := net.ParseCIDR(ip); err != nil {
+				if net.ParseIP(ip) == nil {
+					return nil, fmt.Errorf("invalid AllowedIPs %s", ip)
+				}
+			}
+		}
+	}
+	return summary, nil
+}
 
 func restartInterface(name string) (interface{}, error) {
 	if !ifaceRx.MatchString(name) {
