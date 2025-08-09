@@ -2,6 +2,7 @@ export const CodePackageManagerFailure = 1001;
 export const CodeValidationFailed = 1002;
 export const CodePermissionDenied = 1003;
 export const CodeMetricsUnavailable = 1004;
+export const CodeUnhandled = 1099;
 
 export interface BackendError {
   code: number;

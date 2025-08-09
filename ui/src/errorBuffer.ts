@@ -5,10 +5,13 @@ export interface LoggedError extends BackendError {
 }
 
 const buffer: LoggedError[] = [];
+const listeners: ((err: LoggedError) => void)[] = [];
 
 export function logError(err: BackendError) {
-  buffer.push({ ...err, timestamp: Date.now() });
+  const logged = { ...err, timestamp: Date.now() };
+  buffer.push(logged);
   if (buffer.length > 50) buffer.shift();
+  for (const l of listeners) l(logged);
 }
 
 export function getErrorLog(): LoggedError[] {
@@ -17,4 +20,12 @@ export function getErrorLog(): LoggedError[] {
 
 export function clearErrorLog() {
   buffer.length = 0;
+}
+
+export function onError(cb: (err: LoggedError) => void) {
+  listeners.push(cb);
+  return () => {
+    const idx = listeners.indexOf(cb);
+    if (idx >= 0) listeners.splice(idx, 1);
+  };
 }

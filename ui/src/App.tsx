@@ -20,6 +20,7 @@ import Diagnostics from './Diagnostics';
 import Overview from './Overview';
 import Traffic from './Traffic';
 import Exchange from './Exchange';
+import ErrorToasts from './ErrorToasts';
 
 const App: React.FC = () => {
   const { t } = useTranslation();
@@ -121,14 +122,17 @@ const App: React.FC = () => {
   );
 
   return (
-    <Page sidebar={sidebar} isManagedSidebar>
-      {page === 'overview' && <Overview />}
-      {page === 'interfaces' && <InterfaceControls />}
-      {page === 'peers' && <Peers />}
-      {page === 'traffic' && <Traffic />}
-      {page === 'diagnostics' && <Diagnostics />}
-      {page === 'exchange' && <Exchange />}
-    </Page>
+    <>
+      <ErrorToasts />
+      <Page sidebar={sidebar} isManagedSidebar>
+        {page === 'overview' && <Overview />}
+        {page === 'interfaces' && <InterfaceControls />}
+        {page === 'peers' && <Peers />}
+        {page === 'traffic' && <Traffic />}
+        {page === 'diagnostics' && <Diagnostics />}
+        {page === 'exchange' && <Exchange />}
+      </Page>
+    </>
   );
 };
 
