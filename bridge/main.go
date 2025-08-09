@@ -12,9 +12,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/coreos/go-systemd/v22/journal"
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 var sensitiveRx = regexp.MustCompile(`(?i)(PrivateKey|PresharedKey)\s*=\s*[^\s]+`)
@@ -80,6 +83,14 @@ func handleRequest(req *request) *response {
 		}
 		if err = json.Unmarshal(req.Params, &p); err == nil {
 			result, err = validateConfig(p.Text)
+		}
+	case "ApplyChanges":
+		var p struct {
+			Name string `json:"name"`
+			Text string `json:"text"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			result, err = applyChanges(p.Name, p.Text)
 		}
 	case "WriteConfig":
 		var p struct {
@@ -239,6 +250,139 @@ func validateConfig(text string) (interface{}, error) {
 		return nil, err
 	}
 	return map[string]interface{}{"summary": summary}, nil
+}
+
+func applyChanges(name, text string) (interface{}, error) {
+	auditApply("start", name, "", nil)
+
+	if !ifaceRx.MatchString(name) {
+		err := fmt.Errorf("invalid interface name")
+		auditApply("failure", name, "validate", err)
+		return nil, err
+	}
+	summary, err := parseConfig(text)
+	if err != nil {
+		auditApply("failure", name, "validate", err)
+		return nil, fmt.Errorf("validation failed: %w", err)
+	}
+
+	lockDir := "/run/cockpit-wg/locks"
+	if err := os.MkdirAll(lockDir, 0755); err != nil {
+		auditApply("failure", name, "lock", err)
+		return nil, err
+	}
+	lockFile, err := os.OpenFile(filepath.Join(lockDir, name+".lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		auditApply("failure", name, "lock", err)
+		return nil, err
+	}
+	defer lockFile.Close()
+	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
+		auditApply("failure", name, "lock", err)
+		return nil, err
+	}
+	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+
+	dir := "/etc/wireguard"
+	cfgPath := filepath.Join(dir, name+".conf")
+	if !strings.HasPrefix(filepath.Clean(cfgPath), "/etc/wireguard/") {
+		err := fmt.Errorf("invalid path")
+		auditApply("failure", name, "validate", err)
+		return nil, err
+	}
+
+	tmp, err := os.CreateTemp(dir, name+".tmp")
+	if err != nil {
+		auditApply("failure", name, "write", err)
+		return nil, err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(0600); err != nil {
+		tmp.Close()
+		auditApply("failure", name, "write", err)
+		return nil, err
+	}
+	if _, err := tmp.WriteString(text); err != nil {
+		tmp.Close()
+		auditApply("failure", name, "write", err)
+		return nil, err
+	}
+	tmp.Close()
+
+	backupPath := cfgPath + ".bak"
+	if err := os.Rename(cfgPath, backupPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			auditApply("failure", name, "backup", err)
+			return nil, err
+		}
+	}
+	if err := os.Rename(tmpName, cfgPath); err != nil {
+		os.Rename(backupPath, cfgPath)
+		auditApply("failure", name, "write", err)
+		return nil, err
+	}
+
+	if err := exec.Command("wg", "syncconf", name, cfgPath).Run(); err != nil {
+		auditApply("failure", name, "syncconf", err)
+		os.Remove(cfgPath)
+		os.Rename(backupPath, cfgPath)
+		exec.Command("wg", "syncconf", name, cfgPath).Run()
+		auditApply("rollback", name, "syncconf", err)
+		return nil, fmt.Errorf("wg syncconf failed: %w", err)
+	}
+
+	if err := verifyAppliedConfig(name, summary); err != nil {
+		auditApply("failure", name, "verify", err)
+		os.Remove(cfgPath)
+		os.Rename(backupPath, cfgPath)
+		exec.Command("wg", "syncconf", name, cfgPath).Run()
+		auditApply("rollback", name, "verify", err)
+		return nil, fmt.Errorf("verification failed: %w", err)
+	}
+
+	os.Remove(backupPath)
+	auditApply("success", name, "", nil)
+	return map[string]string{"status": "ok"}, nil
+}
+
+func verifyAppliedConfig(name string, summary *configSummary) error {
+	client, err := wgctrl.New()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	dev, err := client.Device(name)
+	if err != nil {
+		return err
+	}
+
+	if lp, ok := summary.Interface["ListenPort"]; ok && lp != "" {
+		exp, err := strconv.Atoi(lp)
+		if err != nil {
+			return fmt.Errorf("invalid listen port %q", lp)
+		}
+		if dev.ListenPort != exp {
+			return fmt.Errorf("listen port %d != expected %d", dev.ListenPort, exp)
+		}
+	}
+
+	expected := make(map[string]struct{})
+	for _, p := range summary.Peers {
+		if pk, ok := p["PublicKey"]; ok {
+			expected[pk] = struct{}{}
+		}
+	}
+	if len(dev.Peers) != len(expected) {
+		return fmt.Errorf("peer count mismatch")
+	}
+	for _, p := range dev.Peers {
+		if _, ok := expected[p.PublicKey.String()]; !ok {
+			return fmt.Errorf("unexpected peer %s", p.PublicKey.String())
+		}
+	}
+	return nil
 }
 
 func writeConfig(name, text string) (interface{}, error) {
@@ -655,6 +799,18 @@ func checkClockSync() string {
 		return "unsynchronized"
 	}
 	return "unknown"
+}
+
+func auditApply(action, iface, step string, err error) {
+	fields := map[string]interface{}{"action": action, "iface": iface}
+	if step != "" {
+		fields["step"] = step
+	}
+	if err != nil {
+		fields["error"] = err.Error()
+	}
+	msgBytes, _ := json.Marshal(fields)
+	journal.Send(string(msgBytes), journal.PriInfo, nil)
 }
 
 func auditLog(method string, params json.RawMessage, err error) {
