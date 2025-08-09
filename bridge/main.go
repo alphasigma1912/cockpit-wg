@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -77,11 +78,13 @@ type request struct {
 	ID      json.RawMessage `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"`
+	Trace   string          `json:"trace"`
 }
 
 type response struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id"`
+	Trace   string          `json:"trace,omitempty"`
 	Result  interface{}     `json:"result,omitempty"`
 	Error   *respError      `json:"error,omitempty"`
 }
@@ -108,8 +111,12 @@ func main() {
 }
 
 func handleRequest(req *request) *response {
+	start := time.Now()
+	logRPCRequest(req.Trace, req.Method, req.Params)
 	if err := authorize(req.Method); err != nil {
-		return &response{JSONRPC: req.JSONRPC, ID: req.ID, Error: &respError{Code: 403, Message: "not authorized"}}
+		re := &respError{Code: 403, Message: "not authorized"}
+		logRPCError(req.Trace, req.Method, time.Since(start), re)
+		return &response{JSONRPC: "2.0", ID: req.ID, Trace: req.Trace, Error: re}
 	}
 	var result interface{}
 	var err error
@@ -249,11 +256,12 @@ func handleRequest(req *request) *response {
 	}
 
 	if err != nil {
-		auditLog(req.Method, req.Params, err)
-		return &response{JSONRPC: "2.0", ID: req.ID, Error: wrapError(err)}
+		re := wrapError(err)
+		logRPCError(req.Trace, req.Method, time.Since(start), re)
+		return &response{JSONRPC: "2.0", ID: req.ID, Trace: req.Trace, Error: re}
 	}
-	auditLog(req.Method, req.Params, nil)
-	return &response{JSONRPC: "2.0", ID: req.ID, Result: result}
+	logRPCResponse(req.Trace, req.Method, time.Since(start), result)
+	return &response{JSONRPC: "2.0", ID: req.ID, Trace: req.Trace, Result: result}
 }
 
 func listInterfaces() (interface{}, error) {
@@ -888,6 +896,41 @@ func auditLog(method string, params json.RawMessage, err error) {
 	}
 	msgBytes, _ := json.Marshal(fields)
 	journal.Send(string(msgBytes), journal.PriInfo, nil)
+}
+
+func logRPCRequest(trace, method string, params json.RawMessage) {
+	fields := map[string]interface{}{"event": "request", "trace": trace, "method": method}
+	var p interface{}
+	json.Unmarshal(params, &p)
+	fields["params"] = redact(p)
+	msg, _ := json.Marshal(fields)
+	journal.Send(string(msg), journal.PriInfo, nil)
+}
+
+func logRPCResponse(trace, method string, d time.Duration, result interface{}) {
+	b, _ := json.Marshal(result)
+	fields := map[string]interface{}{
+		"event":       "response",
+		"trace":       trace,
+		"method":      method,
+		"duration_ms": d.Milliseconds(),
+		"size":        len(b),
+	}
+	msg, _ := json.Marshal(fields)
+	journal.Send(string(msg), journal.PriInfo, nil)
+}
+
+func logRPCError(trace, method string, d time.Duration, err *respError) {
+	fields := map[string]interface{}{
+		"event":       "error",
+		"trace":       trace,
+		"method":      method,
+		"duration_ms": d.Milliseconds(),
+		"code":        err.Code,
+		"message":     err.Message,
+	}
+	msg, _ := json.Marshal(fields)
+	journal.Send(string(msg), journal.PriInfo, nil)
 }
 
 func redact(v interface{}) interface{} {

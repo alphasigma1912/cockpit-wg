@@ -7,6 +7,7 @@
   "installationFailed": "Installation failed: {{error}}",
   "showDetails": "Show details",
   "hideDetails": "Hide details",
+  "traceId": "Trace ID: {{trace}} (copied to clipboard)",
   "nav": {
     "overview": "Overview",
     "interfaces": "Interfaces",
