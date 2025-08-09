@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -412,7 +412,7 @@ func TestValidateConfigFromTestData(t *testing.T) {
 
 	for _, filename := range validConfigs {
 		t.Run(filename, func(t *testing.T) {
-			content, err := ioutil.ReadFile(filepath.Join("../../testdata", filename))
+			content, err := os.ReadFile(filepath.Join("../../testdata", filename))
 			if err != nil {
 				t.Skipf("Could not read test file %s: %v", filename, err)
 				return
@@ -439,7 +439,7 @@ func TestValidateConfigFromTestData(t *testing.T) {
 
 	for _, filename := range invalidConfigs {
 		t.Run(filename, func(t *testing.T) {
-			content, err := ioutil.ReadFile(filepath.Join("../../testdata", filename))
+			content, err := os.ReadFile(filepath.Join("../../testdata", filename))
 			if err != nil {
 				t.Skipf("Could not read test file %s: %v", filename, err)
 				return
@@ -464,7 +464,7 @@ func TestValidateConfigStrictMode(t *testing.T) {
 	parser := config.NewParser(true)
 
 	// Test catch-all routes in strict mode
-	content, err := ioutil.ReadFile(filepath.Join("../../testdata", "catchall_routes.conf"))
+	content, err := os.ReadFile(filepath.Join("../../testdata", "catchall_routes.conf"))
 	if err != nil {
 		t.Skip("Could not read catch-all test file")
 		return

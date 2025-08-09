@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Button,
   FormGroup,
+  FormHelperText,
   Modal,
   PageSection,
   Title,
@@ -108,8 +109,6 @@ const InterfaceControls: React.FC = () => {
       {error && <ErrorAlert error={error} />}
       <FormGroup
         label={t("interfaces.interfaceLabel")}
-        fieldId="iface-select"
-        helperText={t("interfaces.interfaceHelp")}
       >
         <select
           id="iface-select"
@@ -123,6 +122,9 @@ const InterfaceControls: React.FC = () => {
             </option>
           ))}
         </select>
+        <FormHelperText>
+          {t("interfaces.interfaceHelp")}
+        </FormHelperText>
       </FormGroup>
       <p>{t("interfaces.status", { status })}</p>
       <p>{t("interfaces.lastChange", { lastChange })}</p>

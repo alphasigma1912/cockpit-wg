@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Form,
   FormGroup,
+  FormHelperText,
   TextInput,
   Checkbox,
   Button,
@@ -83,30 +84,36 @@ const Peers: React.FC = () => {
       <Title headingLevel="h1">{t('peers.title')}</Title>
       <Form>
         {error && <Alert isInline variant="danger" title={error} role="alert" />}
-        <FormGroup label={t('peers.endpoint')} fieldId="endpoint" helperText={t('peers.endpointHelp')}>
+        <FormGroup label={t('peers.endpoint')}>
           <TextInput
             id="endpoint"
             value={endpoint}
             onChange={(_, v) => setEndpoint(v)}
             aria-label={t('peers.endpoint')}
           />
+          <FormHelperText>
+            {t('peers.endpointHelp')}
+          </FormHelperText>
         </FormGroup>
-        <FormGroup label={t('peers.allowedIps')} fieldId="allowed" helperText={t('peers.allowedIpsHelp')}>
+        <FormGroup label={t('peers.allowedIps')}>
           <TextInput
             id="allowed"
             value={allowedIPs}
             onChange={(_, v) => setAllowedIPs(v)}
             aria-label={t('peers.allowedIps')}
           />
+          <FormHelperText>
+            {t('peers.allowedIpsHelp')}
+          </FormHelperText>
         </FormGroup>
         <FormGroup
-          label={t('peers.persistentKeepalive')}
-          fieldId="keepalive"
-          helperText={t('peers.keepaliveHelp')}
-          labelIcon={
-            <Tooltip content={t('peers.keepaliveAdvanced')}>
-              <InfoCircleIcon aria-label={t('peers.moreInfo')} />
-            </Tooltip>
+          label={
+            <>
+              {t('peers.persistentKeepalive')}{' '}
+              <Tooltip content={t('peers.keepaliveAdvanced')}>
+                <InfoCircleIcon aria-label={t('peers.moreInfo')} />
+              </Tooltip>
+            </>
           }
         >
           <TextInput
@@ -115,15 +122,18 @@ const Peers: React.FC = () => {
             onChange={(_, v) => setKeepalive(v)}
             aria-label={t('peers.persistentKeepalive')}
           />
+          <FormHelperText>
+            {t('peers.keepaliveHelp')}
+          </FormHelperText>
         </FormGroup>
         <FormGroup
-          label={t('peers.presharedKey')}
-          fieldId="psk"
-          helperText={t('peers.presharedHelp')}
-          labelIcon={
-            <Tooltip content={t('peers.presharedAdvanced')}>
-              <InfoCircleIcon aria-label={t('peers.moreInfo')} />
-            </Tooltip>
+          label={
+            <>
+              {t('peers.presharedKey')}{' '}
+              <Tooltip content={t('peers.presharedAdvanced')}>
+                <InfoCircleIcon aria-label={t('peers.moreInfo')} />
+              </Tooltip>
+            </>
           }
         >
           <Checkbox
@@ -133,8 +143,11 @@ const Peers: React.FC = () => {
             label={t('peers.generatePreshared')}
             aria-label={t('peers.presharedKey')}
           />
+          <FormHelperText>
+            {t('peers.presharedHelp')}
+          </FormHelperText>
         </FormGroup>
-        <FormGroup label={t('peers.enabled')} fieldId="enabled" helperText={t('peers.peerEnabled')}>
+        <FormGroup label={t('peers.enabled')}>
           <Checkbox
             id="enabled"
             isChecked={enabled}
@@ -142,6 +155,9 @@ const Peers: React.FC = () => {
             label={t('peers.peerEnabled')}
             aria-label={t('peers.peerEnabled')}
           />
+          <FormHelperText>
+            {t('peers.peerEnabled')}
+          </FormHelperText>
         </FormGroup>
         <Button variant="primary" onClick={handleAdd}>{t('peers.addPeer')}</Button>{' '}
         <Button variant="secondary" onClick={handleCancel}>{t('peers.cancel')}</Button>
