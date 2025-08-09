@@ -1,0 +1,2 @@
+dist/cockpit-wg/* usr/share/cockpit/cockpit-wg/
+packaging/polkit/org.cockpit-project.cockpit-wg.policy usr/share/polkit-1/actions/

@@ -49,6 +49,11 @@ const App: React.FC = () => {
       .installPackages()
       .then(() => {
         setSummary(t('installationComplete'));
+        return backend.checkPrereqs();
+      })
+      .then((res) => {
+        const ok = res.kernel && res.tools && res.systemd;
+        setNeedsSetup(!ok);
         setInstalling(false);
       })
       .catch((err) => {

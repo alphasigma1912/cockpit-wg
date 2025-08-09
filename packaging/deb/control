@@ -1,0 +1,9 @@
+Package: cockpit-wg
+Version: 0.0.0
+Section: admin
+Priority: optional
+Architecture: amd64
+Depends: cockpit
+Maintainer: Cockpit WG Maintainers <devnull@example.com>
+Description: Cockpit WireGuard Manager plugin
+ Installs the Cockpit WireGuard plugin and helper binary.

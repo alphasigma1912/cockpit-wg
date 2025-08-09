@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+rm -rf /usr/share/cockpit/cockpit-wg
+rm -f /usr/share/polkit-1/actions/org.cockpit-project.cockpit-wg.policy
+if command -v pkcheck >/dev/null 2>&1; then
+  pkcheck --version >/dev/null 2>&1 || true
+fi
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+exit 0
