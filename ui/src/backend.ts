@@ -1,7 +1,11 @@
 declare const cockpit: any;
 
 class Backend {
-  private channel = cockpit.channel({ payload: 'json', path: 'wg-bridge', superuser: 'require' });
+  private channel = cockpit.channel({
+    payload: "json",
+    path: "wg-bridge",
+    superuser: "require",
+  });
   private seq = 0;
 
   private call(method: string, params: any = {}): Promise<any> {
@@ -9,7 +13,7 @@ class Backend {
     return new Promise((resolve, reject) => {
       const handler = (_event: any, data: any) => {
         if (data.id === id) {
-          this.channel.removeEventListener('message', handler);
+          this.channel.removeEventListener("message", handler);
           if (data.error) {
             reject(data.error);
           } else {
@@ -17,61 +21,69 @@ class Backend {
           }
         }
       };
-      this.channel.addEventListener('message', handler);
-      this.channel.send({ jsonrpc: '2.0', id, method, params });
+      this.channel.addEventListener("message", handler);
+      this.channel.send({ jsonrpc: "2.0", id, method, params });
     });
   }
 
   checkPrereqs(): Promise<any> {
-    return this.call('CheckPrereqs');
+    return this.call("CheckPrereqs");
   }
 
   installPackages(): Promise<any> {
-    return this.call('InstallPackages');
+    return this.call("InstallPackages");
   }
 
   runSelfTest(): Promise<any> {
-    return this.call('RunSelfTest');
+    return this.call("RunSelfTest");
   }
 
   listInterfaces(): Promise<any> {
-    return this.call('ListInterfaces');
+    return this.call("ListInterfaces");
   }
 
   getInterfaceStatus(name: string): Promise<any> {
-    return this.call('GetInterfaceStatus', { name });
+    return this.call("GetInterfaceStatus", { name });
   }
 
   upInterface(name: string): Promise<any> {
-    return this.call('UpInterface', { name });
+    return this.call("UpInterface", { name });
   }
 
   downInterface(name: string): Promise<any> {
-    return this.call('DownInterface', { name });
+    return this.call("DownInterface", { name });
   }
 
   restartInterface(name: string): Promise<any> {
-    return this.call('RestartInterface', { name });
+    return this.call("RestartInterface", { name });
   }
 
   getMetrics(name: string): Promise<any> {
-    return this.call('GetMetrics', { name });
+    return this.call("GetMetrics", { name });
   }
 
   addPeer(name: string, peer: any): Promise<any> {
-    return this.call('AddPeer', { name, peer });
+    return this.call("AddPeer", { name, peer });
   }
 
   listPeers(name: string): Promise<any> {
-    return this.call('ListPeers', { name });
+    return this.call("ListPeers", { name });
   }
 
   removePeer(name: string, publicKey: string): Promise<any> {
-    return this.call('RemovePeer', { name, publicKey });
+    return this.call("RemovePeer", { name, publicKey });
   }
 
   updatePeer(name: string, publicKey: string, peer: any): Promise<any> {
-    return this.call('UpdatePeer', { name, publicKey, peer });
+    return this.call("UpdatePeer", { name, publicKey, peer });
+  }
+
+  getExchangeKey(): Promise<any> {
+    return this.call("GetExchangeKey");
+  }
+
+  rotateKeys(): Promise<any> {
+    return this.call("RotateKeys");
   }
 }
 

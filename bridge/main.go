@@ -46,6 +46,7 @@ type respError struct {
 }
 
 func main() {
+	ensureKeys()
 	initMetricsCollector()
 	go watchInbox()
 	scanner := bufio.NewScanner(os.Stdin)
@@ -181,6 +182,10 @@ func handleRequest(req *request) *response {
 		if err = json.Unmarshal(req.Params, &p); err == nil {
 			result, err = listPeers(p.Name)
 		}
+	case "GetExchangeKey":
+		result, err = getExchangeKey()
+	case "RotateKeys":
+		result, err = rotateKeys()
 	default:
 		err = errors.New("unknown method")
 	}
