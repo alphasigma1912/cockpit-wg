@@ -10,3 +10,12 @@ license: MIT
 contents:
   - src: package/usr/share/cockpit/cockpit-wg/**
     dst: /usr/share/cockpit/cockpit-wg
+  - src: package/usr/share/cockpit/cockpit-wg/wg-bridge
+    dst: /usr/share/cockpit/cockpit-wg/wg-bridge
+    file_info:
+      mode: 0755
+  - src: packaging/polkit/org.cockpit-project.cockpit-wg.policy
+    dst: /usr/share/polkit-1/actions
+scripts:
+  postinstall: packaging/scripts/postinstall.sh
+  postremove: packaging/scripts/postremove.sh
