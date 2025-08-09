@@ -113,5 +113,14 @@ describe('logger', () => {
     logger.trace('UI', 't');
     expect(group).toHaveBeenCalledTimes(5);
   });
+
+  it('stores redacted log events', async () => {
+    const { logger, getLogEvents } = await import(LOGGER_PATH);
+    const group = vi.spyOn(console, 'groupCollapsed').mockImplementation(() => {});
+    logger.info('UI', 'x', { secret: 'y' });
+    expect(group).toHaveBeenCalledTimes(1);
+    const events = getLogEvents(1);
+    expect(events[0].args).toEqual(['x', '[REDACTED]']);
+  });
 });
 

@@ -7,9 +7,12 @@ import './i18n';
 import './tokens.css';
 import './accessibility.css';
 import App from './App';
+import GlobalErrorBoundary from './GlobalErrorBoundary';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <GlobalErrorBoundary>
+      <App />
+    </GlobalErrorBoundary>
   </React.StrictMode>
 );

@@ -9,6 +9,26 @@ export enum LogLevel {
 
 export type Channel = 'UI' | 'RPC' | 'STATE' | 'METRICS' | 'EXCHANGE';
 
+export interface LogEvent {
+  timestamp: string;
+  level: LogLevel;
+  channel: Channel;
+  args: unknown[];
+}
+
+const eventBuffer: LogEvent[] = [];
+
+function redact(arg: unknown): unknown {
+  switch (typeof arg) {
+    case 'string':
+    case 'number':
+    case 'boolean':
+      return arg;
+    default:
+      return '[REDACTED]';
+  }
+}
+
 class Logger {
   private level: LogLevel;
   private channels: Set<Channel> = new Set(['UI', 'RPC', 'STATE', 'METRICS', 'EXCHANGE']);
@@ -50,6 +70,13 @@ class Logger {
       }
     }
     console.groupEnd();
+    eventBuffer.push({
+      timestamp,
+      level,
+      channel,
+      args: args.map(redact),
+    });
+    if (eventBuffer.length > 100) eventBuffer.shift();
   }
 
   error(channel: Channel, ...args: unknown[]) {
@@ -76,3 +103,11 @@ class Logger {
 export const logger = new Logger();
 
 export default logger;
+
+export function getLogEvents(limit = 20): LogEvent[] {
+  return eventBuffer.slice(-limit);
+}
+
+export function clearLogEvents() {
+  eventBuffer.length = 0;
+}
