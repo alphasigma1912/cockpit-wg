@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <action id="org.cockpit-project.cockpit-wg.installPackages">
+    <description>Install packages required by Cockpit WireGuard</description>
+    <message>Authentication is required to install system packages needed by Cockpit WireGuard</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+  <action id="org.cockpit-project.cockpit-wg.writeConfig">
+    <description>Write WireGuard configuration</description>
+    <message>Authentication is required to write WireGuard configuration files</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+  <action id="org.cockpit-project.cockpit-wg.applyChanges">
+    <description>Apply WireGuard configuration changes</description>
+    <message>Authentication is required to apply WireGuard configuration changes</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+  <action id="org.cockpit-project.cockpit-wg.rotateKeys">
+    <description>Rotate WireGuard peer keys</description>
+    <message>Authentication is required to rotate WireGuard peer keys</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

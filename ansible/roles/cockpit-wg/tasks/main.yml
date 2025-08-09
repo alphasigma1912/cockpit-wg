@@ -32,6 +32,15 @@
     mode: '0644'
   notify: Reload polkit
 
+- name: Install polkit policy for cockpit-wg
+  template:
+    src: cockpit-wg.policy.j2
+    dest: /usr/share/polkit-1/actions/org.cockpit-project.cockpit-wg.policy
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload polkit
+
 - name: Ensure WireGuard directory exists
   file:
     path: "{{ cockpit_wg_wireguard_dir }}"

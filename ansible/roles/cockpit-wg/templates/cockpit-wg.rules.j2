@@ -1,6 +1,16 @@
 polkit.addRule(function(action, subject) {
-  if (action.id == "org.cockpit-project.cockpit-wg.spawn" &&
+  var allowed = [
+    "org.cockpit-project.cockpit-wg.installPackages",
+    "org.cockpit-project.cockpit-wg.writeConfig",
+    "org.cockpit-project.cockpit-wg.applyChanges",
+    "org.cockpit-project.cockpit-wg.rotateKeys"
+  ];
+  if (allowed.indexOf(action.id) >= 0 &&
       subject.active && subject.isInGroup("{{ cockpit_wg_admin_group }}")) {
-    return polkit.Result.AUTH_ADMIN_KEEP;
+    return polkit.Result.AUTH_ADMIN;
+  }
+  if (action.id.indexOf("org.cockpit-project.cockpit-wg") === 0) {
+    polkit.log("Denied " + action.id + " for user " + subject.user);
+    return polkit.Result.NO;
   }
 });

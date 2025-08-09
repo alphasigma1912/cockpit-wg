@@ -21,6 +21,53 @@ import (
 
 var sensitiveRx = regexp.MustCompile(`(?i)(PrivateKey|PresharedKey)\s*=\s*[^\s]+`)
 
+var actionMap = map[string]string{
+	"InstallPackages": "org.cockpit-project.cockpit-wg.installPackages",
+	"WriteConfig":     "org.cockpit-project.cockpit-wg.writeConfig",
+	"ApplyChanges":    "org.cockpit-project.cockpit-wg.applyChanges",
+	"RotateKeys":      "org.cockpit-project.cockpit-wg.rotateKeys",
+}
+
+var allowedMethods = map[string]bool{
+	"ListInterfaces":     true,
+	"ReadConfig":         true,
+	"ValidateConfig":     true,
+	"ApplyChanges":       true,
+	"WriteConfig":        true,
+	"ReloadInterface":    true,
+	"UpInterface":        true,
+	"DownInterface":      true,
+	"GetInterfaceStatus": true,
+	"RestartInterface":   true,
+	"GetMetrics":         true,
+	"CheckPrereqs":       true,
+	"InstallPackages":    true,
+	"RunSelfTest":        true,
+	"AddPeer":            true,
+	"RemovePeer":         true,
+	"UpdatePeer":         true,
+	"ListPeers":          true,
+	"GetExchangeKey":     true,
+	"RotateKeys":         true,
+	"ExportConfig":       true,
+	"ListInbox":          true,
+}
+
+func authorize(method string) error {
+	if !allowedMethods[method] {
+		go journal.Send(fmt.Sprintf("{\"method\":\"%s\",\"error\":\"denied\"}", method), journal.PriErr, nil)
+		return errors.New("not authorized")
+	}
+	if action, ok := actionMap[method]; ok {
+		cmd := exec.Command("pkcheck", "--action-id", action, "--process", strconv.Itoa(os.Getpid()), "--allow-user-interaction")
+		if err := cmd.Run(); err != nil {
+			go journal.Send(fmt.Sprintf("{\"method\":\"%s\",\"action\":\"%s\",\"error\":\"denied\"}", method, action), journal.PriErr, nil)
+			return err
+		}
+	}
+	return nil
+}
+
 func sanitizeOutput(s string) string {
 	return sensitiveRx.ReplaceAllString(s, "$1=[REDACTED]")
 }
@@ -66,6 +113,9 @@ func main() {
 }
 
 func handleRequest(req *request) *response {
+	if err := authorize(req.Method); err != nil {
+		return &response{JSONRPC: req.JSONRPC, ID: req.ID, Error: &respError{Code: 403, Message: "not authorized"}}
+	}
 	var result interface{}
 	var err error
 	switch req.Method {
