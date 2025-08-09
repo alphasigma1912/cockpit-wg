@@ -1,0 +1,132 @@
+name: Test and Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd ui
+          npm ci
+
+      - name: Lint TypeScript
+        run: |
+          cd ui
+          # Добавим линтер если его нет
+          if [ -f "package.json" ] && grep -q "lint" package.json; then
+            npm run lint
+          else
+            echo "No linter configured, checking TypeScript compilation"
+            npx tsc --noEmit
+          fi
+
+      - name: Build frontend
+        run: |
+          cd ui
+          npm run build
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: bridge/go.sum
+
+      - name: Run tests
+        run: |
+          cd bridge
+          go test -v ./...
+
+      - name: Run go vet
+        run: |
+          cd bridge
+          go vet ./...
+
+      - name: Run staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          working-directory: bridge
+          version: "2023.1.7"
+
+      - name: Check formatting
+        run: |
+          cd bridge
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Go code is not formatted:"
+            gofmt -s -l .
+            exit 1
+          fi
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Run Gosec Security Scanner
+        uses: securecodewarrior/github-action-gosec@master
+        with:
+          args: '-fmt sarif -out gosec.sarif ./bridge/...'
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: gosec.sarif
+
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Check npm dependencies
+        run: |
+          cd ui
+          npm audit --audit-level=high
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Check Go dependencies
+        run: |
+          cd bridge
+          go list -json -deps ./... | jq -r 'select(.Module != null) | .Module.Path' | sort -u > deps.txt
+          echo "Go dependencies:"
+          cat deps.txt
