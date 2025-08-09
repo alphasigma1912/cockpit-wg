@@ -5,14 +5,18 @@ import {
   EmptyStateBody,
   EmptyStateHeader
 } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 
-const Exchange: React.FC = () => (
-  <PageSection>
-    <EmptyState variant="sm">
-      <EmptyStateHeader titleText="Exchange" headingLevel="h1" />
-      <EmptyStateBody>No exchange data available.</EmptyStateBody>
-    </EmptyState>
-  </PageSection>
-);
+const Exchange: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <PageSection>
+      <EmptyState variant="sm">
+        <EmptyStateHeader titleText={t('exchange.title')} headingLevel="h1" />
+        <EmptyStateBody>{t('exchange.noData')}</EmptyStateBody>
+      </EmptyState>
+    </PageSection>
+  );
+};
 
 export default Exchange;

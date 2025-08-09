@@ -1,0 +1,78 @@
+{
+  "wireguardSetup": "WireGuard setup",
+  "wireguardNotInstalled": "WireGuard is not installed. Install WireGuard and enable systemd service templates.",
+  "installing": "Installing…",
+  "installWireGuard": "Install WireGuard",
+  "installationComplete": "Installation complete",
+  "installationFailed": "Installation failed: {{error}}",
+  "nav": {
+    "overview": "Overview",
+    "interfaces": "Interfaces",
+    "peers": "Peers",
+    "traffic": "Traffic",
+    "diagnostics": "Diagnostics",
+    "exchange": "Exchange",
+    "primary": "Primary navigation"
+  },
+  "interfaces": {
+    "title": "Interfaces",
+    "interfaceLabel": "Interface",
+    "interfaceHelp": "Select the interface to manage",
+    "status": "Status: {{status}}",
+    "lastChange": "Last change: {{lastChange}}",
+    "up": "Up",
+    "down": "Down",
+    "restart": "Restart",
+    "bringDownTitle": "Bring interface down?",
+    "modalBody": "Bringing the interface down will disconnect all peers.",
+    "downConfirm": "Down",
+    "cancel": "Cancel",
+    "selectorAria": "Interface selector"
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "running": "Running…",
+    "runSelfTest": "Run self-test",
+    "error": "Error: {{error}}"
+  },
+  "peers": {
+    "title": "Peers",
+    "endpoint": "Endpoint",
+    "endpointHelp": "Peer's endpoint in host:port format",
+    "allowedIps": "Allowed IPs",
+    "allowedIpsHelp": "Comma-separated list of allowed IPs",
+    "persistentKeepalive": "Persistent keepalive",
+    "keepaliveHelp": "Seconds between keepalive packets",
+    "keepaliveAdvanced": "Advanced: helps maintain NAT mappings",
+    "presharedKey": "Preshared key",
+    "presharedHelp": "Generate an optional preshared key",
+    "presharedAdvanced": "Advanced: adds symmetric encryption",
+    "generatePreshared": "Generate preshared key",
+    "enabled": "Enabled",
+    "peerEnabled": "Peer enabled",
+    "addPeer": "Add peer",
+    "cancel": "Cancel",
+    "publicKey": "Public key: {{publicKey}}",
+    "peerQrAlt": "Peer QR code",
+    "searchPeers": "Search peers",
+    "noPeers": "No peers",
+    "addPeerToGetStarted": "Add a peer to get started.",
+    "moreInfo": "More information"
+  },
+  "overview": {
+    "title": "Overview"
+  },
+  "traffic": {
+    "title": "Traffic",
+    "noData": "No traffic data available."
+  },
+  "exchange": {
+    "title": "Exchange",
+    "noData": "No exchange data available."
+  },
+  "metrics": {
+    "noData": "No traffic data",
+    "title": "Interface traffic (bytes per second)",
+    "desc": "Solid green line shows received traffic; dashed blue line shows transmitted traffic."
+  }
+}

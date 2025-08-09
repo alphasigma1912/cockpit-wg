@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   Alert,
@@ -11,6 +12,7 @@ import backend from './backend';
 import MetricsGraph from './MetricsGraph';
 
 const InterfaceControls: React.FC = () => {
+  const { t } = useTranslation();
   const [interfaces, setInterfaces] = useState<string[]>([]);
   const [selected, setSelected] = useState<string>('');
   const [status, setStatus] = useState('');
@@ -91,14 +93,14 @@ const InterfaceControls: React.FC = () => {
 
   return (
     <PageSection>
-      <Title headingLevel="h1">Interfaces</Title>
-      {error && <Alert isInline variant="danger" title={error} />}
-      <FormGroup label="Interface" fieldId="iface-select" helperText="Select the interface to manage">
+      <Title headingLevel="h1">{t('interfaces.title')}</Title>
+      {error && <Alert isInline variant="danger" title={error} isLiveRegion />}
+      <FormGroup label={t('interfaces.interfaceLabel')} fieldId="iface-select" helperText={t('interfaces.interfaceHelp')}>
         <select
           id="iface-select"
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          aria-label="Interface selector"
+          aria-label={t('interfaces.selectorAria')}
         >
           {interfaces.map((n) => (
             <option key={n} value={n}>
@@ -107,33 +109,33 @@ const InterfaceControls: React.FC = () => {
           ))}
         </select>
       </FormGroup>
-      <p>Status: {status}</p>
-      <p>Last change: {lastChange}</p>
+      <p>{t('interfaces.status', { status })}</p>
+      <p>{t('interfaces.lastChange', { lastChange })}</p>
       {message && <pre>{message}</pre>}
       <MetricsGraph times={metrics.timestamps} rx={metrics.rx} tx={metrics.tx} />
       <Button variant="primary" onClick={doAction('up')} isDisabled={!selected}>
-        Up
+        {t('interfaces.up')}
       </Button>{' '}
       <Button variant="secondary" onClick={() => setConfirmDown(true)} isDisabled={!selected}>
-        Down
+        {t('interfaces.down')}
       </Button>{' '}
       <Button variant="secondary" onClick={doAction('restart')} isDisabled={!selected}>
-        Restart
+        {t('interfaces.restart')}
       </Button>
       <Modal
-        title="Bring interface down?"
+        title={t('interfaces.bringDownTitle')}
         isOpen={confirmDown}
         onClose={() => setConfirmDown(false)}
         actions={[
           <Button key="confirm" variant="danger" onClick={confirmDownAction}>
-            Down
+            {t('interfaces.downConfirm')}
           </Button>,
           <Button key="cancel" variant="secondary" onClick={() => setConfirmDown(false)}>
-            Cancel
+            {t('interfaces.cancel')}
           </Button>,
         ]}
       >
-        Bringing the interface down will disconnect all peers.
+        {t('interfaces.modalBody')}
       </Modal>
     </PageSection>
   );
