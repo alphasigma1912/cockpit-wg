@@ -166,7 +166,7 @@ func (m *metricsCollector) getMetrics(name string) []metricSample {
 
 func getMetrics(name string) (interface{}, error) {
 	if collector == nil {
-		return map[string]interface{}{"timestamps": []int64{}, "rx": []float64{}, "tx": []float64{}}, nil
+		return nil, ErrMetricsUnavailable
 	}
 	samples := collector.getMetrics(name)
 	times := make([]int64, len(samples))

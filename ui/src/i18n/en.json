@@ -5,6 +5,8 @@
   "installWireGuard": "Install WireGuard",
   "installationComplete": "Installation complete",
   "installationFailed": "Installation failed: {{error}}",
+  "showDetails": "Show details",
+  "hideDetails": "Hide details",
   "nav": {
     "overview": "Overview",
     "interfaces": "Interfaces",
@@ -28,6 +30,12 @@
     "downConfirm": "Down",
     "cancel": "Cancel",
     "selectorAria": "Interface selector"
+  },
+  "errors": {
+    "packageManagerFailed": "Failed to install packages",
+    "validationFailed": "Configuration validation failed",
+    "permissionDenied": "Permission denied",
+    "metricsUnavailable": "Metrics provider unavailable"
   },
   "diagnostics": {
     "title": "Diagnostics",

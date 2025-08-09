@@ -56,13 +56,13 @@ var allowedMethods = map[string]bool{
 func authorize(method string) error {
 	if !allowedMethods[method] {
 		go journal.Send(fmt.Sprintf("{\"method\":\"%s\",\"error\":\"denied\"}", method), journal.PriErr, nil)
-		return errors.New("not authorized")
+		return ErrPermission
 	}
 	if action, ok := actionMap[method]; ok {
 		cmd := exec.Command("pkcheck", "--action-id", action, "--process", strconv.Itoa(os.Getpid()), "--allow-user-interaction")
 		if err := cmd.Run(); err != nil {
 			go journal.Send(fmt.Sprintf("{\"method\":\"%s\",\"action\":\"%s\",\"error\":\"denied\"}", method, action), journal.PriErr, nil)
-			return err
+			return fmt.Errorf("%w: %v", ErrPermission, err)
 		}
 	}
 	return nil
@@ -84,11 +84,6 @@ type response struct {
 	ID      json.RawMessage `json:"id"`
 	Result  interface{}     `json:"result,omitempty"`
 	Error   *respError      `json:"error,omitempty"`
-}
-
-type respError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
 }
 
 func main() {
@@ -255,7 +250,7 @@ func handleRequest(req *request) *response {
 
 	if err != nil {
 		auditLog(req.Method, req.Params, err)
-		return &response{JSONRPC: "2.0", ID: req.ID, Error: &respError{Code: -1, Message: err.Error()}}
+		return &response{JSONRPC: "2.0", ID: req.ID, Error: wrapError(err)}
 	}
 	auditLog(req.Method, req.Params, nil)
 	return &response{JSONRPC: "2.0", ID: req.ID, Result: result}
@@ -316,7 +311,7 @@ func readConfig(name string) (interface{}, error) {
 func validateConfig(text string) (interface{}, error) {
 	summary, err := parseConfig(text)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrValidation, err)
 	}
 	return map[string]interface{}{"summary": summary}, nil
 }
@@ -325,14 +320,15 @@ func applyChanges(name, text string) (interface{}, error) {
 	auditApply("start", name, "", nil)
 
 	if !ifaceRx.MatchString(name) {
-		err := fmt.Errorf("invalid interface name")
+		err := fmt.Errorf("%w: invalid interface name", ErrValidation)
 		auditApply("failure", name, "validate", err)
 		return nil, err
 	}
 	summary, err := parseConfig(text)
 	if err != nil {
+		wrapped := fmt.Errorf("%w: %v", ErrValidation, err)
 		auditApply("failure", name, "validate", err)
-		return nil, fmt.Errorf("validation failed: %w", err)
+		return nil, wrapped
 	}
 
 	lockDir := "/run/cockpit-wg/locks"
@@ -456,7 +452,7 @@ func verifyAppliedConfig(name string, summary *configSummary) error {
 
 func writeConfig(name, text string) (interface{}, error) {
 	if !ifaceRx.MatchString(name) {
-		return nil, fmt.Errorf("invalid interface name")
+		return nil, fmt.Errorf("%w: invalid interface name", ErrValidation)
 	}
 	if _, err := validateConfig(text); err != nil {
 		return nil, err
@@ -711,17 +707,17 @@ func checkPrereqs() (interface{}, error) {
 func installPackages() (interface{}, error) {
 	pm, err := detectPackageManager()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrPackageManager, err)
 	}
 	pkgs := []string{"wireguard", "wireguard-tools"}
 	args := append(pm.installArgs, pkgs...)
 	cmd := exec.Command(pm.cmd, args...)
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrPackageManager, err)
 	}
 	exec.Command("systemctl", "daemon-reload").Run()
 	if _, err := exec.LookPath("wg"); err != nil {
-		return nil, fmt.Errorf("wg binary not found after installation")
+		return nil, fmt.Errorf("%w: wg binary not found after installation", ErrPackageManager)
 	}
 	return map[string]string{"status": "ok"}, nil
 }
