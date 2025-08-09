@@ -1,16 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Page, PageSection, Title, Button, Spinner, Alert } from '@patternfly/react-core';
+import {
+  Page,
+  PageSection,
+  Title,
+  Button,
+  Spinner,
+  Alert,
+  Nav,
+  NavList,
+  NavItem,
+  PageSidebar,
+  PageSidebarBody
+} from '@patternfly/react-core';
 import backend from './backend';
 import Peers from './Peers';
 import InterfaceControls from './InterfaceControls';
 import Diagnostics from './Diagnostics';
+import Overview from './Overview';
+import Traffic from './Traffic';
+import Exchange from './Exchange';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
-  const [page, setPage] = useState<'main' | 'diagnostics'>('main');
+  const [page, setPage] = useState<
+    'overview' | 'interfaces' | 'peers' | 'traffic' | 'diagnostics' | 'exchange'
+  >('overview');
 
   useEffect(() => {
     backend
@@ -65,21 +82,45 @@ const App: React.FC = () => {
     );
   }
 
+  const nav = (
+    <Nav onSelect={(e, itemId) => setPage(itemId as any)} aria-label="Primary navigation">
+      <NavList>
+        <NavItem itemId="overview" isActive={page === 'overview'}>
+          Overview
+        </NavItem>
+        <NavItem itemId="interfaces" isActive={page === 'interfaces'}>
+          Interfaces
+        </NavItem>
+        <NavItem itemId="peers" isActive={page === 'peers'}>
+          Peers
+        </NavItem>
+        <NavItem itemId="traffic" isActive={page === 'traffic'}>
+          Traffic
+        </NavItem>
+        <NavItem itemId="diagnostics" isActive={page === 'diagnostics'}>
+          Diagnostics
+        </NavItem>
+        <NavItem itemId="exchange" isActive={page === 'exchange'}>
+          Exchange
+        </NavItem>
+      </NavList>
+    </Nav>
+  );
+
+  const sidebar = (
+    <PageSidebar>
+      <PageSidebarBody>{nav}</PageSidebarBody>
+    </PageSidebar>
+  );
+
   return (
-    <Page>
-      <PageSection>
-        <Title headingLevel="h1">Cockpit WireGuard</Title>
-        <Button variant="link" onClick={() => setPage('main')}>Interfaces</Button>
-        <Button variant="link" onClick={() => setPage('diagnostics')}>Diagnostics</Button>
-        {page === 'main' ? (
-          <>
-            <InterfaceControls />
-            <Peers />
-          </>
-        ) : (
-          <Diagnostics />
-        )}
-      </PageSection>
+    <Page sidebar={sidebar} isManagedSidebar>
+      {page === 'overview' && <Overview />}
+      {page === 'interfaces' && <InterfaceControls />}
+      {page === 'peers' && <Peers />}
+      {page === 'traffic' && <Traffic />}
+      {page === 'diagnostics' && <Diagnostics />}
+      {page === 'exchange' && <Exchange />}
     </Page>
   );
 };

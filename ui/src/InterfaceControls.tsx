@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Alert, FormGroup } from '@patternfly/react-core';
+import {
+  Button,
+  Alert,
+  FormGroup,
+  Modal,
+  PageSection,
+  Title
+} from '@patternfly/react-core';
 import backend from './backend';
 import MetricsGraph from './MetricsGraph';
 
@@ -10,6 +17,7 @@ const InterfaceControls: React.FC = () => {
   const [lastChange, setLastChange] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [confirmDown, setConfirmDown] = useState(false);
   const [metrics, setMetrics] = useState<{ timestamps: number[]; rx: number[]; tx: number[] }>({
     timestamps: [],
     rx: [],
@@ -76,11 +84,22 @@ const InterfaceControls: React.FC = () => {
     p.catch((e) => setError(String(e))).finally(scheduleRefresh);
   };
 
+  const confirmDownAction = () => {
+    setConfirmDown(false);
+    doAction('down')();
+  };
+
   return (
-    <div>
+    <PageSection>
+      <Title headingLevel="h1">Interfaces</Title>
       {error && <Alert isInline variant="danger" title={error} />}
-      <FormGroup label="Interface" fieldId="iface-select">
-        <select id="iface-select" value={selected} onChange={(e) => setSelected(e.target.value)}>
+      <FormGroup label="Interface" fieldId="iface-select" helperText="Select the interface to manage">
+        <select
+          id="iface-select"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          aria-label="Interface selector"
+        >
           {interfaces.map((n) => (
             <option key={n} value={n}>
               {n}
@@ -95,13 +114,28 @@ const InterfaceControls: React.FC = () => {
       <Button variant="primary" onClick={doAction('up')} isDisabled={!selected}>
         Up
       </Button>{' '}
-      <Button variant="secondary" onClick={doAction('down')} isDisabled={!selected}>
+      <Button variant="secondary" onClick={() => setConfirmDown(true)} isDisabled={!selected}>
         Down
       </Button>{' '}
       <Button variant="secondary" onClick={doAction('restart')} isDisabled={!selected}>
         Restart
       </Button>
-    </div>
+      <Modal
+        title="Bring interface down?"
+        isOpen={confirmDown}
+        onClose={() => setConfirmDown(false)}
+        actions={[
+          <Button key="confirm" variant="danger" onClick={confirmDownAction}>
+            Down
+          </Button>,
+          <Button key="cancel" variant="secondary" onClick={() => setConfirmDown(false)}>
+            Cancel
+          </Button>,
+        ]}
+      >
+        Bringing the interface down will disconnect all peers.
+      </Modal>
+    </PageSection>
   );
 };
 
