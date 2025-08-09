@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/fsnotify/fsnotify v1.7.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 )
 

@@ -47,6 +47,7 @@ type respError struct {
 
 func main() {
 	initMetricsCollector()
+	go watchInbox()
 	scanner := bufio.NewScanner(os.Stdin)
 	writer := bufio.NewWriter(os.Stdout)
 
