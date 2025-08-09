@@ -1,0 +1,12 @@
+name: cockpit-wg
+arch: amd64
+platform: linux
+version: 0.0.0
+section: utils
+priority: optional
+maintainer: Cockpit WG Maintainers <devnull@example.com>
+description: Cockpit WireGuard Manager plugin
+license: MIT
+contents:
+  - src: package/usr/share/cockpit/cockpit-wg/**
+    dst: /usr/share/cockpit/cockpit-wg

@@ -31,15 +31,13 @@ jobs:
           cd ui
           npm test
 
-      - name: Lint TypeScript
+      - name: Run ESLint
         run: |
           cd ui
-          # Добавим линтер если его нет
           if [ -f "package.json" ] && grep -q "lint" package.json; then
             npm run lint
           else
-            echo "No linter configured, checking TypeScript compilation"
-            npx tsc --noEmit
+            npx eslint .
           fi
 
       - name: Build frontend
@@ -76,6 +74,11 @@ jobs:
           go-version: '1.22'
           cache-dependency-path: bridge/go.sum
 
+      - name: Build backend
+        run: |
+          cd bridge
+          go build ./...
+
       - name: Run tests
         run: |
           cd bridge
@@ -91,6 +94,12 @@ jobs:
         with:
           working-directory: bridge
           version: "2023.1.7"
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v5
+        with:
+          working-directory: bridge
+          version: latest
 
       - name: Check formatting
         run: |
@@ -151,3 +160,58 @@ jobs:
           go list -json -deps ./... | jq -r 'select(.Module != null) | .Module.Path' | sort -u > deps.txt
           echo "Go dependencies:"
           cat deps.txt
+
+  trivy-scan:
+    name: Container and License Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@v0.21.0
+        with:
+          scan-type: fs
+          scanners: vuln,license
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Generate Go SBOM
+        run: |
+          cd bridge
+          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+          export PATH="$HOME/go/bin:$PATH"
+          cyclonedx-gomod mod -o ../bom-go.json
+
+      - name: Generate npm SBOM
+        run: |
+          cd ui
+          npm ci
+          npx @cyclonedx/cyclonedx-npm --output ../bom-npm.json
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            bom-go.json
+            bom-npm.json
+          retention-days: 7
