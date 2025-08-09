@@ -57,7 +57,10 @@
     "searchPeers": "Search peers",
     "noPeers": "No peers",
     "addPeerToGetStarted": "Add a peer to get started.",
-    "moreInfo": "More information"
+    "moreInfo": "More information",
+    "endpointRequired": "Endpoint is required",
+    "allowedRequired": "Allowed IPs are required",
+    "keepaliveNumber": "Keepalive must be a number"
   },
   "overview": {
     "title": "Overview"
@@ -71,7 +74,9 @@
     "noData": "No exchange data available.",
     "pubKeyLabel": "Public exchange key",
     "rotate": "Rotate keys",
-    "redistributeWarning": "Redistribute the new public key to peers."
+    "redistributeWarning": "Redistribute the new public key to peers.",
+    "importBundle": "Import .wgx bundle",
+    "importSuccess": "Bundle imported"
   },
   "metrics": {
     "noData": "No traffic data",

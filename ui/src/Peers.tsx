@@ -21,6 +21,7 @@ import {
 import { InfoCircleIcon } from '@patternfly/react-icons';
 import QRCode from 'qrcode';
 import backend from './backend';
+import { validatePeerForm } from './validators';
 
 const Peers: React.FC = () => {
   const { t } = useTranslation();
@@ -32,8 +33,15 @@ const Peers: React.FC = () => {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
 
   const handleAdd = async () => {
+    const v = validatePeerForm(endpoint, allowedIPs, keepalive);
+    if (v) {
+      setError(t(v));
+      return;
+    }
+    setError('');
     const peer = {
       endpoint,
       allowed_ips: allowedIPs.split(',').map((s) => s.trim()).filter(Boolean),
@@ -74,6 +82,7 @@ const Peers: React.FC = () => {
     <PageSection>
       <Title headingLevel="h1">{t('peers.title')}</Title>
       <Form>
+        {error && <Alert isInline variant="danger" title={error} role="alert" />}
         <FormGroup label={t('peers.endpoint')} fieldId="endpoint" helperText={t('peers.endpointHelp')}>
           <TextInput
             id="endpoint"

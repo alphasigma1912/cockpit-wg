@@ -26,6 +26,11 @@ jobs:
           cd ui
           npm ci
 
+      - name: Run unit tests
+        run: |
+          cd ui
+          npm test
+
       - name: Lint TypeScript
         run: |
           cd ui
@@ -41,6 +46,22 @@ jobs:
         run: |
           cd ui
           npm run build
+
+      - name: Run e2e tests
+        run: |
+          cd ui
+          npm run preview &
+          npx wait-on http://localhost:4173
+          npm run e2e
+        env:
+          CI: true
+
+      - name: Upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: ui/cypress/screenshots
 
   test-backend:
     name: Test Backend

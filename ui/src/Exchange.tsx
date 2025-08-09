@@ -15,6 +15,7 @@ const Exchange: React.FC = () => {
   const [key, setKey] = useState("");
   const [qr, setQr] = useState<string | null>(null);
   const [warn, setWarn] = useState(false);
+  const [imported, setImported] = useState(false);
 
   const loadKey = async () => {
     const k = await backend.getExchangeKey();
@@ -33,6 +34,14 @@ const Exchange: React.FC = () => {
     setWarn(true);
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const content = await file.text();
+    await backend.importBundle(content);
+    setImported(true);
+  };
+
   return (
     <PageSection>
       {warn && (
@@ -49,6 +58,16 @@ const Exchange: React.FC = () => {
         {t("exchange.pubKeyLabel")}: {key}
       </p>
       {qr && <img src={qr} alt={t("exchange.pubKeyLabel")} />}
+      <input
+        type="file"
+        accept=".wgx"
+        onChange={handleImport}
+        aria-label={t('exchange.importBundle')}
+        data-testid="bundle-input"
+      />
+      {imported && (
+        <Alert isInline variant="success" title={t('exchange.importSuccess')} />
+      )}
       <Button onClick={rotate}>{t("exchange.rotate")}</Button>
     </PageSection>
   );
