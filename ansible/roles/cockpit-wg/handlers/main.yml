@@ -1,0 +1,11 @@
+---
+# Handlers for cockpit-wg role
+
+- name: Reload polkit
+  service:
+    name: "{{ cockpit_wg_polkit_service }}"
+    state: reloaded
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: true
