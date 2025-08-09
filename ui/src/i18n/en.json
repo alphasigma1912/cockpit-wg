@@ -8,6 +8,10 @@
   "showDetails": "Show details",
   "hideDetails": "Hide details",
   "traceId": "Trace ID: {{trace}} (copied to clipboard)",
+  "unexpectedError": "An unexpected error occurred",
+  "reloadPlugin": "Reload plugin",
+  "enterSafeMode": "Enter Safe Mode",
+  "copyErrorDetails": "Copy error details",
   "nav": {
     "overview": "Overview",
     "interfaces": "Interfaces",
