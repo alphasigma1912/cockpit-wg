@@ -1,7 +1,64 @@
 ---
-# Placeholder tasks for deploying cockpit-wg
-- name: Ensure wg-bridge binary is installed
-  copy:
-    src: wg-bridge
-    dest: /usr/local/bin/wg-bridge
+# Tasks for deploying cockpit-wg plugin and bridge
+
+- name: Ensure plugin directory exists
+  file:
+    path: "{{ cockpit_wg_plugin_dir }}"
+    state: directory
+    owner: root
+    group: root
     mode: '0755'
+
+- name: Install cockpit-wg plugin files
+  copy:
+    src: "{{ cockpit_wg_src_dir }}/"
+    dest: "{{ cockpit_wg_plugin_dir }}/"
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Install wg-bridge binary
+  copy:
+    src: "{{ cockpit_wg_src_dir }}/wg-bridge"
+    dest: "{{ cockpit_wg_plugin_dir }}/wg-bridge"
+    mode: '0755'
+  notify: Reload systemd
+
+- name: Install polkit rules for cockpit-wg
+  template:
+    src: cockpit-wg.rules.j2
+    dest: "{{ cockpit_wg_polkit_dir }}/50-cockpit-wg.rules"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload polkit
+
+- name: Ensure WireGuard directory exists
+  file:
+    path: "{{ cockpit_wg_wireguard_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure cockpit-wg key directory exists
+  file:
+    path: "{{ cockpit_wg_keys_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Ensure cockpit-wg inbox directory exists
+  file:
+    path: "{{ cockpit_wg_inbox_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Seed public exchange key into inventory
+  fetch:
+    src: "{{ cockpit_wg_keys_dir }}/public.key"
+    dest: "{{ cockpit_wg_inventory_path }}/{{ inventory_hostname }}.pub"
+    flat: true
+  when: cockpit_wg_seed_inventory

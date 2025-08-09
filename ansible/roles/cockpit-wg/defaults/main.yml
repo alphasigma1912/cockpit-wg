@@ -1,0 +1,22 @@
+---
+# Default variables for cockpit-wg role
+
+cockpit_wg_src_dir: "{{ role_path }}/../../dist/cockpit-wg"
+cockpit_wg_plugin_dir: /usr/share/cockpit/cockpit-wg
+cockpit_wg_polkit_dir: /usr/share/polkit-1/rules.d
+cockpit_wg_wireguard_dir: /etc/wireguard
+cockpit_wg_keys_dir: /etc/cockpit-wg/keys
+cockpit_wg_inbox_dir: /var/lib/cockpit-wg/inbox
+
+cockpit_wg_seed_inventory: false
+cockpit_wg_inventory_path: "{{ playbook_dir }}/exchange-keys"
+
+cockpit_wg_polkit_service_map:
+  Debian: polkit
+  RedHat: polkit
+cockpit_wg_polkit_service: "{{ cockpit_wg_polkit_service_map[ansible_os_family] | default('polkit') }}"
+
+cockpit_wg_admin_group_map:
+  Debian: sudo
+  RedHat: wheel
+cockpit_wg_admin_group: "{{ cockpit_wg_admin_group_map[ansible_os_family] | default('wheel') }}"

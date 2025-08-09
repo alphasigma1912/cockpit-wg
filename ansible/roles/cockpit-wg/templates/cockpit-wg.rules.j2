@@ -1,0 +1,6 @@
+polkit.addRule(function(action, subject) {
+  if (action.id == "org.cockpit-project.cockpit-wg.spawn" &&
+      subject.active && subject.isInGroup("{{ cockpit_wg_admin_group }}")) {
+    return polkit.Result.AUTH_ADMIN_KEEP;
+  }
+});
