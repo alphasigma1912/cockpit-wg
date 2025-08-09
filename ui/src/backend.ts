@@ -1,3 +1,4 @@
+import { logError } from './errorBuffer';
 declare const cockpit: any;
 
 class Backend {
@@ -15,6 +16,7 @@ class Backend {
         if (data.id === id) {
           this.channel.removeEventListener("message", handler);
           if (data.error) {
+            logError(data.error);
             reject(data.error);
           } else {
             resolve(data.result);

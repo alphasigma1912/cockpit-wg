@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
-  Alert,
   FormGroup,
   Modal,
   PageSection,
@@ -10,6 +9,8 @@ import {
 } from "@patternfly/react-core";
 import backend from "./backend";
 import MetricsGraph from "./MetricsGraph";
+import ErrorAlert from './ErrorAlert';
+import { BackendError } from './errorCodes';
 
 const InterfaceControls: React.FC = () => {
   const { t } = useTranslation();
@@ -18,7 +19,7 @@ const InterfaceControls: React.FC = () => {
   const [status, setStatus] = useState("");
   const [lastChange, setLastChange] = useState("");
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<BackendError | null>(null);
   const [confirmDown, setConfirmDown] = useState(false);
   const [metrics, setMetrics] = useState<{
     timestamps: number[];
@@ -41,7 +42,7 @@ const InterfaceControls: React.FC = () => {
           setSelected(list[0]);
         }
       })
-      .catch((e) => setError(String(e)));
+      .catch((e: BackendError) => setError(e));
   }, []);
 
   const refreshStatus = () => {
@@ -53,7 +54,7 @@ const InterfaceControls: React.FC = () => {
         setLastChange(res.last_change);
         setMessage(res.message || "");
       })
-      .catch((e) => setError(String(e)));
+      .catch((e: BackendError) => setError(e));
   };
 
   useEffect(() => {
@@ -66,7 +67,7 @@ const InterfaceControls: React.FC = () => {
         .then((res) => {
           if (!cancelled) setMetrics(res);
         })
-        .catch((e) => setError(String(e)));
+        .catch((e: BackendError) => setError(e));
     };
     fetchMetrics();
     const id = setInterval(fetchMetrics, 2000);
@@ -88,12 +89,12 @@ const InterfaceControls: React.FC = () => {
   };
 
   const doAction = (action: "up" | "down" | "restart") => () => {
-    setError("");
+    setError(null);
     let p: Promise<any>;
     if (action === "up") p = backend.upInterface(selected);
     else if (action === "down") p = backend.downInterface(selected);
     else p = backend.restartInterface(selected);
-    p.catch((e) => setError(String(e))).finally(scheduleRefresh);
+    p.catch((e: BackendError) => setError(e)).finally(scheduleRefresh);
   };
 
   const confirmDownAction = () => {
@@ -104,7 +105,7 @@ const InterfaceControls: React.FC = () => {
   return (
     <PageSection>
       <Title headingLevel="h1">{t("interfaces.title")}</Title>
-      {error && <Alert isInline variant="danger" title={error} isLiveRegion />}
+      {error && <ErrorAlert error={error} />}
       <FormGroup
         label={t("interfaces.interfaceLabel")}
         fieldId="iface-select"
