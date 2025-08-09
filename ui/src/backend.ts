@@ -78,6 +78,10 @@ class Backend {
     return this.call("UpdatePeer", { name, publicKey, peer });
   }
 
+  importBundle(bundle: string): Promise<any> {
+    return this.call("ImportBundle", { bundle });
+  }
+
   getExchangeKey(): Promise<any> {
     return this.call("GetExchangeKey");
   }
