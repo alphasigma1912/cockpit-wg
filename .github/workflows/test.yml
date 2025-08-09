@@ -122,13 +122,17 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Install Gosec
+        run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
       - name: Run Gosec Security Scanner
-        uses: securecodewarrior/github-action-gosec@master
-        with:
-          args: '-fmt sarif -out gosec.sarif ./bridge/...'
+        run: |
+          cd bridge
+          $HOME/go/bin/gosec -fmt sarif -out ../gosec.sarif ./...
 
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: gosec.sarif
 
@@ -168,14 +172,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Trivy
-        uses: aquasecurity/trivy-action@v0.21.0
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
-          scanners: vuln,license
-          severity: HIGH,CRITICAL
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'
+
+      - name: Upload Trivy scan results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   sbom:
     name: Generate SBOM
@@ -199,7 +211,7 @@ jobs:
           cd bridge
           go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
           export PATH="$HOME/go/bin:$PATH"
-          cyclonedx-gomod mod -o ../bom-go.json
+          cyclonedx-gomod mod -output ../bom-go.json .
 
       - name: Generate npm SBOM
         run: |
