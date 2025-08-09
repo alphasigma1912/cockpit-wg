@@ -4,6 +4,7 @@ import '@patternfly/react-core/dist/styles/base.css';
 import './preloadFonts';
 import './theme';
 import './i18n';
+import './tokens.css';
 import './accessibility.css';
 import App from './App';
 
