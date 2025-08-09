@@ -110,3 +110,11 @@ func reencryptInbox(oldPriv, newPub string) {
 		os.Remove(tmp)
 	}
 }
+
+func getSigningFingerprint() (string, error) {
+	out, err := exec.Command("minisign", "-F", "-p", signingPubKey).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}

@@ -186,6 +186,20 @@ func handleRequest(req *request) *response {
 		result, err = getExchangeKey()
 	case "RotateKeys":
 		result, err = rotateKeys()
+	case "ExportConfig":
+		var p struct {
+			Name      string `json:"name"`
+			Recipient string `json:"recipient"`
+		}
+		if err = json.Unmarshal(req.Params, &p); err == nil {
+			var path string
+			path, err = exportBundle(p.Name, p.Recipient)
+			if err == nil {
+				result = map[string]string{"path": path, "signature": path + ".minisig"}
+			}
+		}
+	case "ListInbox":
+		result, err = listInboxBundles()
 	default:
 		err = errors.New("unknown method")
 	}
