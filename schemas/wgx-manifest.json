@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WGX Manifest",
+  "type": "object",
+  "required": ["interface", "version", "checksum"],
+  "properties": {
+    "interface": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$",
+      "description": "SHA-256 checksum of config.conf in lowercase hex"
+    }
+  }
+}
