@@ -18,10 +18,9 @@ import (
 )
 
 const (
-	inboxDir        = "/var/lib/cockpit-wg/inbox"
-	trustedPubKey   = "/var/lib/cockpit-wg/signing.pub"
-	exchangePrivKey = "/var/lib/cockpit-wg/exchange.key"
-	pendingDir      = "/var/lib/cockpit-wg/pending"
+	inboxDir      = "/var/lib/cockpit-wg/inbox"
+	trustedPubKey = "/var/lib/cockpit-wg/signing.pub"
+	pendingDir    = "/var/lib/cockpit-wg/pending"
 )
 
 type Manifest struct {

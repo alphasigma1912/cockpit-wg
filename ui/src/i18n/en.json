@@ -68,7 +68,10 @@
   },
   "exchange": {
     "title": "Exchange",
-    "noData": "No exchange data available."
+    "noData": "No exchange data available.",
+    "pubKeyLabel": "Public exchange key",
+    "rotate": "Rotate keys",
+    "redistributeWarning": "Redistribute the new public key to peers."
   },
   "metrics": {
     "noData": "No traffic data",
