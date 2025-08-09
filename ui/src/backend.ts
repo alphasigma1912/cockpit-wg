@@ -1,4 +1,5 @@
 import { logError } from './errorBuffer';
+import logger from './logger';
 declare const cockpit: any;
 
 class Backend {
@@ -9,22 +10,61 @@ class Backend {
   });
   private seq = 0;
 
+  private redact(obj: any): any {
+    if (obj && typeof obj === 'object') {
+      const res: any = Array.isArray(obj) ? [] : {};
+      for (const k of Object.keys(obj)) {
+        res[k] = '***';
+      }
+      return res;
+    }
+    return obj;
+  }
+
   private call(method: string, params: any = {}): Promise<any> {
     const id = String(this.seq++);
+    const trace = crypto.randomUUID();
+    const start = performance.now();
+    const timeoutMs = method === 'InstallPackages' ? 30000 : 10000;
+    const controller = new AbortController();
     return new Promise((resolve, reject) => {
+      const cleanup = (handler: any) => {
+        window.clearTimeout(timer);
+        this.channel.removeEventListener('message', handler);
+      };
+      const timer = window.setTimeout(() => {
+        controller.abort();
+      }, timeoutMs);
+
       const handler = (_event: any, data: any) => {
-        if (data.id === id) {
-          this.channel.removeEventListener("message", handler);
+        if (data.id === id && data.trace === trace) {
+          cleanup(handler);
+          const duration = performance.now() - start;
           if (data.error) {
-            logError(data.error);
-            reject(data.error);
+            const err = { ...data.error, trace };
+            logger.error('RPC', 'error', { trace, method, duration, code: err.code, message: err.message });
+            logError(err);
+            reject(err);
           } else {
+            const size = JSON.stringify(data.result ?? {}).length;
+            logger.info('RPC', 'response', { trace, method, duration, size });
             resolve(data.result);
           }
         }
       };
-      this.channel.addEventListener("message", handler);
-      this.channel.send({ jsonrpc: "2.0", id, method, params });
+
+      controller.signal.addEventListener('abort', () => {
+        cleanup(handler);
+        const duration = performance.now() - start;
+        const err = { code: -1, message: 'timeout', trace };
+        logger.error('RPC', 'timeout', { trace, method, duration });
+        logError(err);
+        reject(err);
+      });
+
+      logger.info('RPC', 'request', { trace, method, params: this.redact(params) });
+      this.channel.addEventListener('message', handler);
+      this.channel.send({ jsonrpc: '2.0', id, method, params, trace });
     });
   }
 

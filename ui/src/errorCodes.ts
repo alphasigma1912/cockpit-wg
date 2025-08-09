@@ -8,6 +8,7 @@ export interface BackendError {
   message: string;
   details?: string;
   timestamp?: number;
+  trace?: string;
 }
 
 export const errorMessages: Record<number, string> = {
