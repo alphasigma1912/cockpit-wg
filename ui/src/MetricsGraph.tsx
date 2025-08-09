@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   times: number[];
@@ -7,8 +8,9 @@ interface Props {
 }
 
 const MetricsGraph: React.FC<Props> = ({ times, rx, tx }) => {
+  const { t } = useTranslation();
   if (times.length === 0) {
-    return <svg role="img" aria-label="No traffic data" />;
+    return <svg role="img" aria-label={t('metrics.noData')} />;
   }
   const width = 400;
   const height = 100;
@@ -36,19 +38,22 @@ const MetricsGraph: React.FC<Props> = ({ times, rx, tx }) => {
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-labelledby="traffic-title"
+      aria-describedby="traffic-desc"
     >
-      <title id="traffic-title">Interface traffic (bytes per second)</title>
+      <title id="traffic-title">{t('metrics.title')}</title>
+      <desc id="traffic-desc">{t('metrics.desc')}</desc>
       <path
         d={rxPath}
         fill="none"
-        stroke="var(--pf-v5-global--palette--green-400)"
+        stroke="var(--pf-v5-global--palette--green-500)"
         strokeWidth="2"
       />
       <path
         d={txPath}
         fill="none"
-        stroke="var(--pf-v5-global--palette--blue-400)"
+        stroke="var(--pf-v5-global--palette--blue-500)"
         strokeWidth="2"
+        strokeDasharray="4"
       />
     </svg>
   );

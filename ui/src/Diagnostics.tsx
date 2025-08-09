@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { PageSection, Title, Button, Spinner } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 import backend from './backend';
 
 const Diagnostics: React.FC = () => {
+  const { t } = useTranslation();
   const [running, setRunning] = useState(false);
   const [report, setReport] = useState('');
   const [details, setDetails] = useState<any>(null);
@@ -18,16 +20,16 @@ const Diagnostics: React.FC = () => {
         setDetails(res.details);
       })
       .catch((err) => {
-        setReport(`Error: ${err}`);
+        setReport(t('diagnostics.error', { error: err }));
       })
       .finally(() => setRunning(false));
   };
 
   return (
     <PageSection>
-      <Title headingLevel="h1">Diagnostics</Title>
+      <Title headingLevel="h1">{t('diagnostics.title')}</Title>
       <Button onClick={handleRun} isDisabled={running}>
-        {running ? 'Running…' : 'Run self-test'}
+        {running ? t('diagnostics.running') : t('diagnostics.runSelfTest')}
       </Button>
       {running && <Spinner />}
       {report && <pre>{report}</pre>}

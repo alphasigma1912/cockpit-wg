@@ -1,0 +1,9 @@
+:focus-visible {
+  outline: 3px solid #000;
+  outline-offset: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  :focus-visible {
+    outline: 3px solid #fff;
+  }
+}

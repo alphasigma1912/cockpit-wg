@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Page,
   PageSection,
@@ -21,6 +22,7 @@ import Traffic from './Traffic';
 import Exchange from './Exchange';
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -46,11 +48,11 @@ const App: React.FC = () => {
     backend
       .installPackages()
       .then(() => {
-        setSummary('Installation complete');
+        setSummary(t('installationComplete'));
         setInstalling(false);
       })
       .catch((err) => {
-        setSummary(`Installation failed: ${err}`);
+        setSummary(t('installationFailed', { error: err }));
         setInstalling(false);
       });
   };
@@ -69,13 +71,13 @@ const App: React.FC = () => {
     return (
       <Page>
         <PageSection>
-          <Title headingLevel="h1">WireGuard setup</Title>
-          <p>WireGuard is not installed. Install WireGuard and enable systemd service templates.</p>
+          <Title headingLevel="h1">{t('wireguardSetup')}</Title>
+          <p>{t('wireguardNotInstalled')}</p>
           <Button variant="primary" onClick={handleInstall} isDisabled={installing}>
-            {installing ? 'Installing…' : 'Install WireGuard'}
+            {installing ? t('installing') : t('installWireGuard')}
           </Button>
           {summary && (
-            <Alert isInline variant="info" title={summary} />
+            <Alert isInline variant="info" title={summary} isLiveRegion />
           )}
         </PageSection>
       </Page>
@@ -83,25 +85,25 @@ const App: React.FC = () => {
   }
 
   const nav = (
-    <Nav onSelect={(e, itemId) => setPage(itemId as any)} aria-label="Primary navigation">
+    <Nav onSelect={(e, itemId) => setPage(itemId as any)} aria-label={t('nav.primary')}>
       <NavList>
         <NavItem itemId="overview" isActive={page === 'overview'}>
-          Overview
+          {t('nav.overview')}
         </NavItem>
         <NavItem itemId="interfaces" isActive={page === 'interfaces'}>
-          Interfaces
+          {t('nav.interfaces')}
         </NavItem>
         <NavItem itemId="peers" isActive={page === 'peers'}>
-          Peers
+          {t('nav.peers')}
         </NavItem>
         <NavItem itemId="traffic" isActive={page === 'traffic'}>
-          Traffic
+          {t('nav.traffic')}
         </NavItem>
         <NavItem itemId="diagnostics" isActive={page === 'diagnostics'}>
-          Diagnostics
+          {t('nav.diagnostics')}
         </NavItem>
         <NavItem itemId="exchange" isActive={page === 'exchange'}>
-          Exchange
+          {t('nav.exchange')}
         </NavItem>
       </NavList>
     </Nav>
