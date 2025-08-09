@@ -9,6 +9,7 @@
       <p>${detail || 'Check browser console or /etc/cockpit-wg/flags.json for next steps.'}</p>
     `;
   }
+  window.__renderSafeMode = renderSafeMode;
 
   async function isDisabled() {
     try {
@@ -32,6 +33,8 @@
       renderSafeMode('DISABLED', 'Plugin disabled by system flag. Remove the flag to load normally.');
       return;
     }
+    const errors = await import('/src/globalErrorHandlers');
+    errors.registerGlobalErrorHandlers();
     await import('/src/main.tsx');
   } catch (err) {
     console.error('bootstrap error', err);

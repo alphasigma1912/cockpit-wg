@@ -122,5 +122,20 @@ describe('logger', () => {
     const events = getLogEvents(1);
     expect(events[0].args).toEqual(['x', '[REDACTED]']);
   });
+
+  it('redacts sensitive strings', async () => {
+    const { logger, getLogEvents, clearLogEvents } = await import(LOGGER_PATH);
+    vi.spyOn(console, 'groupCollapsed').mockImplementation(() => {});
+    clearLogEvents();
+    const msg = 'PrivateKey = ' + 'A'.repeat(43) + '=';
+    logger.error('UI', msg);
+    let events = getLogEvents(1);
+    expect(events[0].args[0]).toBe('PrivateKey = [REDACTED]');
+    clearLogEvents();
+    const msg2 = 'PresharedKey = ' + 'A'.repeat(43) + '=';
+    logger.error('UI', msg2);
+    events = getLogEvents(1);
+    expect(events[0].args[0]).toBe('PresharedKey = [REDACTED]');
+  });
 });
 

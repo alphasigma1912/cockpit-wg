@@ -18,9 +18,21 @@ export interface LogEvent {
 
 const eventBuffer: LogEvent[] = [];
 
+const base64Key = /\b[A-Za-z0-9+/]{43}=\b/g;
+const privateKey = /(PrivateKey\s*=\s*)([A-Za-z0-9+/=]+)/gi;
+const presharedKey = /(PresharedKey\s*=\s*)([A-Za-z0-9+/=]+)/gi;
+
+export function redactString(str: string): string {
+  return str
+    .replace(privateKey, '$1[REDACTED]')
+    .replace(presharedKey, '$1[REDACTED]')
+    .replace(base64Key, '[REDACTED]');
+}
+
 function redact(arg: unknown): unknown {
   switch (typeof arg) {
     case 'string':
+      return redactString(arg);
     case 'number':
     case 'boolean':
       return arg;
