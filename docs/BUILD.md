@@ -28,6 +28,8 @@ This project automatically builds for multiple platforms using GitHub Actions:
 - **Go 1.22+**
 - **Make** (optional, for convenience)
 
+> The project uses these versions in `.github/workflows/test.yml` and `.github/workflows/release.yml`; install them locally for consistent building, linting, testing, and packaging.
+
 ### Quick Start
 ```bash
 # Build for current platform (Linux recommended)

@@ -87,6 +87,8 @@ make multi-arch
 - **Go 1.22+**
 - **Make** (optional)
 
+> These versions match the GitHub Actions environment (see `.github/workflows/test.yml` and `.github/workflows/release.yml`) and are required for building, linting, testing, and packaging.
+
 ### Local Development
 ```bash
 # Clone repository

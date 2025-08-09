@@ -1,0 +1,87 @@
+name: Release Packages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: bridge/go.sum
+
+      - name: Build frontend
+        run: |
+          cd ui
+          npm ci
+          npm run build
+
+      - name: Build backend
+        run: |
+          cd bridge
+          go build -ldflags "-s -w -X main.version=${VERSION}" -o wg-bridge
+
+      - name: Prepare package files
+        run: |
+          mkdir -p package/usr/share/cockpit/cockpit-wg
+          cp ui/manifest.json package/usr/share/cockpit/cockpit-wg/
+          cp ui/dist/index.html package/usr/share/cockpit/cockpit-wg/
+          cp -r ui/dist/assets package/usr/share/cockpit/cockpit-wg/
+          cp bridge/wg-bridge package/usr/share/cockpit/cockpit-wg/wg-bridge
+          chmod +x package/usr/share/cockpit/cockpit-wg/wg-bridge
+
+      - name: Install packaging tools
+        run: |
+          curl -fsSL https://github.com/goreleaser/nfpm/releases/latest/download/nfpm_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin nfpm
+          sudo apt-get update && sudo apt-get install -y minisign
+
+      - name: Build packages
+        run: |
+          nfpm package --config packaging/nfpm.yaml --packager deb --target dist/cockpit-wg_${VERSION}.deb --version ${VERSION}
+          nfpm package --config packaging/nfpm.yaml --packager rpm --target dist/cockpit-wg_${VERSION}.rpm --version ${VERSION}
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum cockpit-wg_${VERSION}.deb cockpit-wg_${VERSION}.rpm > checksums.txt
+
+      - name: Sign assets
+        env:
+          MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
+        run: |
+          printf '%s' "$MINISIGN_KEY" > minisign.key
+          minisign -Sm -s minisign.key dist/cockpit-wg_${VERSION}.deb
+          minisign -Sm -s minisign.key dist/cockpit-wg_${VERSION}.rpm
+          minisign -Sm -s minisign.key dist/checksums.txt
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/cockpit-wg_${VERSION}.deb
+            dist/cockpit-wg_${VERSION}.deb.minisig
+            dist/cockpit-wg_${VERSION}.rpm
+            dist/cockpit-wg_${VERSION}.rpm.minisig
+            dist/checksums.txt
+            dist/checksums.txt.minisig
+          draft: false
+          prerelease: ${{ contains(env.VERSION, 'rc') || contains(env.VERSION, 'beta') || contains(env.VERSION, 'alpha') }}
