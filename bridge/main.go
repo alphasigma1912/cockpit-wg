@@ -14,7 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/coreos/go-systemd/v22/journal"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -278,11 +277,11 @@ func applyChanges(name, text string) (interface{}, error) {
 		return nil, err
 	}
 	defer lockFile.Close()
-	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
+	if err := lockFileDescriptor(int(lockFile.Fd())); err != nil {
 		auditApply("failure", name, "lock", err)
 		return nil, err
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer unlockFileDescriptor(int(lockFile.Fd()))
 
 	dir := "/etc/wireguard"
 	cfgPath := filepath.Join(dir, name+".conf")
