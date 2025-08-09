@@ -83,14 +83,14 @@ func (v *ManifestValidator) validateManifestFields(manifest *Manifest) error {
 		return fmt.Errorf("invalid checksum: %w", err)
 	}
 
-	// Validate source (if present)
+	// Validate source (if present and not empty)
 	if manifest.Source != "" {
 		if err := v.validateSource(manifest.Source); err != nil {
 			return fmt.Errorf("invalid source: %w", err)
 		}
 	}
 
-	// Validate timestamp (if present and in strict mode)
+	// Validate timestamp (if present and not zero, and in strict mode)
 	if v.strictMode && manifest.Timestamp != 0 {
 		if err := v.validateTimestamp(manifest.Timestamp); err != nil {
 			return fmt.Errorf("invalid timestamp: %w", err)

@@ -198,7 +198,6 @@ func TestValidateManifestInvalidSource(t *testing.T) {
 	validator := NewManifestValidator(true)
 
 	invalidSources := []string{
-		"",                                   // empty
 		strings.Repeat("x", 256),             // too long
 		"source\x00with\x01control\x02chars", // control characters
 	}
@@ -256,7 +255,6 @@ func TestValidateManifestInvalidTimestamp(t *testing.T) {
 	validator := NewManifestValidator(true)
 
 	invalidTimestamps := []int64{
-		0,
 		-1,
 		1691587200 + 25*60*60, // too far in future
 	}

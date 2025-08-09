@@ -12,10 +12,10 @@ import (
 
 var (
 	// Common validation patterns
-	ifaceNameRx    = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,15}$`)
-	publicKeyRx    = regexp.MustCompile(`^[A-Za-z0-9+/]{42}[A-Ea-e048]==$`)
-	privateKeyRx   = regexp.MustCompile(`^[A-Za-z0-9+/]{42}[A-Ea-e048]==$`)
-	presharedKeyRx = regexp.MustCompile(`^[A-Za-z0-9+/]{42}[A-Ea-e048]==$`)
+	ifaceNameRx    = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,16}$`)
+	publicKeyRx    = regexp.MustCompile(`^[A-Za-z0-9+/]{43}=$`)
+	privateKeyRx   = regexp.MustCompile(`^[A-Za-z0-9+/]{43}=$`)
+	presharedKeyRx = regexp.MustCompile(`^[A-Za-z0-9+/]{43}=$`)
 )
 
 // ConfigValidator validates WireGuard configurations
